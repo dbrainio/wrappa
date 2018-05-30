@@ -27,21 +27,24 @@ ds_model_config:
 ## Supported specification
 
 ### Input
-**image**:
-  Array of bytes representation of an image will be passed to DSModel.predict
+**image**
+
+Array of bytes representation of an image will be passed to DSModel.predict
 
 ### Output
-**image**:
-  Array of bytes representation of an image is expecting to be produced from DSModel.predict
+**image**
 
-**image_url+text**:
-  DSModel.predict produces following object:
-  ```json
-  {
-    "url": "http://path/to/image",
-    "text": "Some basic **markdown** __text__"
-  }
-  ```
+Array of bytes representation of an image is expecting to be produced from DSModel.predict
+
+**image_url+text**
+
+DSModel.predict produces following object:
+```json
+{
+  "url": "http://path/to/image",
+  "text": "Some basic **markdown** __text__"
+}
+```
 
 ## DSModel interface
 DSModel need to be accessible from provided path, what means it need to be importable.
@@ -57,6 +60,20 @@ class DSModel:
   def predict(self, data):
     return [x**2 for x in data]
 ```
+
+## Server description
+GET /heathcheck -> returns empty response with 204 status code.
+
+GET /info -> returns `server_info` section of config.
+
+POST /predict ->
+Accepts inputs as follows:
+
+**image**
+
+Content-Type: multipart/form-data
+
+Name: `file`
 
 ## How to use
 It's simple.
