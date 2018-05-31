@@ -46,7 +46,8 @@ class PylintCommand(distutils.cmd.Command):
 
 install_requires = [
     'Flask-RESTful>=0.3.6',
-    'Flask>=1.0.2'
+    'Flask>=1.0.2',
+    'python-consul>=1.0.1'
 ]
 
 CONFIG = {

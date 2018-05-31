@@ -16,6 +16,11 @@ server_info:
   invitation_message: "send image"
 # port where service will run
 port: 8000
+# connect to consul node
+# for debug it is optionable
+consul:
+  host: 127.0.0.1
+  port: 8500
 # section describing DSModel
 ds_model_config:
   # absolute (!) path to importable (!!!) package
@@ -85,3 +90,6 @@ If everything is fine, you'll be able to execute following command in your termi
 
 To run server:
 `dbrdsw --config './config.yml'`
+
+To run server in dev mode:
+`dbrdsw --config './config.yml' --debug=true`

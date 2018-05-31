@@ -1,11 +1,14 @@
 server_info:
-  address: "http://localhost:8000"
+  address: "http://127.0.0.1:8000"
   specification:
     input: image
     output: image
   name: "test app"
   invitation_message: "send image"
 port: 8000
+consul:
+  host: 127.0.0.1
+  port: 8500
 ds_model_config:
   model_path: '/Users/sergey/work/dbrain/programming/dbrain-ds-server-wrapper/dbrdsw/dummy/ds.py'
   config: {}
