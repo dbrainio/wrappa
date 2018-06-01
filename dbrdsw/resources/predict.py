@@ -5,6 +5,7 @@ import json
 from flask_restful import abort, reqparse, Resource
 from flask import send_file, make_response
 import werkzeug
+import requests
 
 
 class Predict(Resource):
@@ -27,6 +28,8 @@ class Predict(Resource):
         parse.add_argument(
             'file', type=werkzeug.datastructures.FileStorage, location='files')
         parse.add_argument(
+            'image_url', type=str)
+        parse.add_argument(
             'text', type=str
         )
         args = parse.parse_args()
@@ -35,13 +38,23 @@ class Predict(Resource):
         resp = {'data': {}, 'metadata': {}}
         if 'image' in input_spec:
             f = args['file']
+            filename = None
             buf = io.BytesIO()
-            f.save(buf)
-            f.close()
+            if f is None:
+                # Download file
+                r = requests.get(args['image_url'])
+                buf.write(r.content)
+                buf.flush()
+                filename = ''.join(args['image_url'].split(
+                    '/')[-1].split('?')[:-1])
+            else:
+                f.save(buf)
+                f.close()
+                filename = f.filename
             resp['data']['image'] = buf.getvalue()
             resp['metadata']['image'] = {
-                'filename': f.filename,
-                'ext': f.filename.split('.')[-1]
+                'filename': filename,
+                'ext': filename.split('.')[-1]
             }
             # return buf.getvalue(), {
             #     'filename': f.filename,
