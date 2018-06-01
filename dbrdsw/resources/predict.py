@@ -54,8 +54,8 @@ class Predict(Resource):
         # Parse request
         try:
             data, meta = self._parse_request()
-        except Exception:
-            abort(400, message='Unbale to parse request')
+        except Exception as e:
+            abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
             abort(400, message='Invalid data')
         # Send data to request
@@ -63,7 +63,7 @@ class Predict(Resource):
             # Predict should accept array of objects
             # For now just create array of a single object
             [res, *_] = self._ds_model.predict([data])
-        except Exception:
-            abort(400, message='DS model failed to process data')
+        except Exception as e:
+            abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
         return self._prepare_response(res, meta)
