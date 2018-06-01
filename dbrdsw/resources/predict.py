@@ -1,8 +1,9 @@
 import importlib.util
 import io
+import json
 
 from flask_restful import abort, reqparse, Resource
-from flask import send_file
+from flask import send_file, make_response
 import werkzeug
 
 
@@ -23,32 +24,63 @@ class Predict(Resource):
 
     def _parse_request(self):
         parse = reqparse.RequestParser()
+        parse.add_argument(
+            'file', type=werkzeug.datastructures.FileStorage, location='files')
+        parse.add_argument(
+            'text', type=str
+        )
+        args = parse.parse_args()
+
         input_spec = self._server_info['specification']['input']
-        if input_spec == 'image':
-            parse.add_argument(
-                'file', type=werkzeug.datastructures.FileStorage, location='files')
-            args = parse.parse_args()
+        resp = {'data': {}, 'metadata': {}}
+        if 'image' in input_spec:
             f = args['file']
             buf = io.BytesIO()
             f.save(buf)
             f.close()
-            return buf.getvalue(), {
+            resp['data']['image'] = buf.getvalue()
+            resp['metadata']['image'] = {
                 'filename': f.filename,
                 'ext': f.filename.split('.')[-1]
             }
+            # return buf.getvalue(), {
+            #     'filename': f.filename,
+            #     'ext': f.filename.split('.')[-1]
+            # }
+        if 'text' in input_spec:
+            resp['text'] = args['text']
+            resp['metadata']['text'] = {}
 
-        return None, None
+        if len(resp['data']) == 1:
+            for k in resp['data']:
+                return resp['data'][k], resp['metadata'][k]
+
+        return resp['data'], resp['metadata']
 
     def _prepare_response(self, response, meta):
         output_spec = self._server_info['specification']['output']
-        if output_spec == 'image':
-            buf = io.BytesIO(response)
-            return send_file(buf, mimetype='image/' + meta['ext'])
-        elif output_spec == 'image_url+text':
-            return {
-                'text': response['text'],
-                'url': response['url']
-            }
+        resp = None
+        if 'image' in output_spec:
+            buf = io.BytesIO(response['image'])
+            resp = send_file(buf, mimetype='image/' + meta['ext'])
+        else:
+            resp = make_response()
+
+        def _form_header(value):
+            if 'list' in output_spec:
+                l = []
+                for v in response:
+                    l.append(v[value])
+                resp.headers['dbr-' + value] = json.dumps(l)
+            else:
+                resp.headers['dbr-' + value] = response[value]
+            return resp
+
+        if 'image_url' in output_spec:
+            resp = _form_header('image_url')
+        if 'text' in output_spec:
+            resp = _form_header('text')
+        return resp
 
     def post(self):
         # Parse request
@@ -56,7 +88,7 @@ class Predict(Resource):
             data, meta = self._parse_request()
         except Exception as e:
             abort(400, message='Unbale to parse request: ' + str(e))
-        if data is None:
+        if data == {}:
             abort(400, message='Invalid data')
         # Send data to request
         try:
@@ -66,4 +98,7 @@ class Predict(Resource):
         except Exception as e:
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
-        return self._prepare_response(res, meta)
+        response = self._prepare_response(res, meta)
+        if response is None:
+            abort(400, message='Unable to prepare response')
+        return response

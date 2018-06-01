@@ -8,8 +8,11 @@ server_info:
   address: "http://localhost:8000"
   # what DSModel expects as an input and what it produce
   specification:
-    input: image
-    output: image
+    input:
+      - image
+    output:
+      - image
+      - text
   # display name in interface
   name: "test app"
   # message to be shown before accepting input in interface
@@ -30,6 +33,7 @@ ds_model_config:
 ```
 
 ## Supported specification
+All specification can be passed as mixins.
 
 ### Input
 **image**
@@ -40,15 +44,62 @@ Array of bytes representation of an image will be passed to DSModel.predict
 **image**
 
 Array of bytes representation of an image is expecting to be produced from DSModel.predict
+```json
+{
+  "image": "bytes representaion of image"
+}
+```
 
-**image_url+text**
+**image_url**
 
 DSModel.predict produces following object:
 ```json
 {
-  "url": "http://path/to/image",
-  "text": "Some basic **markdown** __text__"
+  "image_url": "path/to/image"
 }
+```
+
+**text**
+
+DSModel.predict produces following object:
+```json
+{
+  "text": "some **markdown** __text__"
+}
+```
+
+**list**
+
+DSModel.predict produces list of objects for each input.
+__Note__: list is not supported for image specification.
+
+For example, if you provide several outputs in config:
+```yaml
+output:
+  - image
+  - text
+```
+then DSModel predict for each input should return following object:
+```json
+{
+  "image": "bytes representaion of image",
+  "text": "some **markdown** __text__"
+}
+```
+
+If you provide:
+```yaml
+output:
+  - image_url
+  - text
+  - list
+```
+then you need to return following object:
+```json
+[{
+  "image_url": "path/to/image",
+  "text": "some **markdown** __text__"
+}]
 ```
 
 ## DSModel interface
@@ -72,13 +123,14 @@ GET /heathcheck -> returns empty response with 204 status code.
 GET /info -> returns `server_info` section of config.
 
 POST /predict ->
-Accepts inputs as follows:
+Expect input as follows:
 
 **image**
 
 Content-Type: multipart/form-data
 
 Name: `file`
+
 
 ## How to use
 It's simple.

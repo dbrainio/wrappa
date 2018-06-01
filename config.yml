@@ -1,8 +1,11 @@
 server_info:
   address: "http://127.0.0.1:8000"
   specification:
-    input: image
-    output: image
+    input:
+      - image
+    output:
+      - image
+      - text
   name: "test app"
   invitation_message: "send image"
 port: 8000
