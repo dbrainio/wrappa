@@ -71,7 +71,6 @@ DSModel.predict produces following object:
 **list**
 
 DSModel.predict produces list of objects for each input.
-__Note__: list is not supported for image specification.
 
 For example, if you provide several outputs in config:
 ```yaml

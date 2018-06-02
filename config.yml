@@ -3,7 +3,9 @@ server_info:
   specification:
     input:
       - image
+      # - text
     output:
+      - list
       - image
       - text
   name: "test app"

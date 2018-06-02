@@ -4,5 +4,6 @@ class DSModel:
         pass
 
     def predict(self, data):
-        res = [{'image': v, 'text': 'Test dsjfkas'} for v in data]
+        res = [[{'image': v['image'], 'text': 'Test dsjfkas'}, {
+            'image': v['image'], 'text': 'Test dsjfkas'}] for v in data]
         return res

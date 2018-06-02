@@ -3,7 +3,8 @@ import io
 import json
 
 from flask_restful import abort, reqparse, Resource
-from flask import send_file, make_response
+from flask import make_response
+from requests_toolbelt import MultipartEncoder
 import werkzeug
 import requests
 
@@ -56,49 +57,55 @@ class Predict(Resource):
                 'filename': filename,
                 'ext': filename.split('.')[-1]
             }
-            # return buf.getvalue(), {
-            #     'filename': f.filename,
-            #     'ext': f.filename.split('.')[-1]
-            # }
         if 'text' in input_spec:
             resp['text'] = args['text']
             resp['metadata']['text'] = {}
 
-        if len(resp['data']) == 1:
-            for k in resp['data']:
-                return resp['data'][k], resp['metadata'][k]
+        # if len(resp['data']) == 1:
+        #     for k in resp['data']:
+        #         return resp['data'][k], resp['metadata'][k]
 
         return resp['data'], resp['metadata']
 
-    def _prepare_response(self, response, meta):
+    def _prepare_response(self, response):
         output_spec = self._server_info['specification']['output']
-        resp = None
+        resp = make_response()
+        fields = {}
+
         if 'image' in output_spec:
-            buf = io.BytesIO(response['image'])
-            resp = send_file(buf, mimetype='image/' + meta['ext'])
-        else:
-            resp = make_response()
+            if 'list' in output_spec:
+                for i, v in enumerate(response):
+                    buf = io.BytesIO(v['image'])
+                    fields['image-{}'.format(i)] = ('filename',
+                                                    buf,)
+            else:
+                buf = io.BytesIO(response['image'])
+                fields['image'] = ('filename', buf,)
 
         def _form_header(value):
             if 'list' in output_spec:
                 l = []
                 for v in response:
                     l.append(v[value])
-                resp.headers['dbr-' + value] = json.dumps(l)
+                fields[value] = json.dumps(l)
             else:
-                resp.headers['dbr-' + value] = response[value]
-            return resp
+                fields[value] = response[value]
+            return fields
 
         if 'image_url' in output_spec:
-            resp = _form_header('image_url')
+            fields = _form_header('image_url')
         if 'text' in output_spec:
-            resp = _form_header('text')
+            fields = _form_header('text')
+
+        me = MultipartEncoder(fields=fields)
+        resp = make_response(me.to_string())
+        resp.mimetype = me.content_type
         return resp
 
     def post(self):
         # Parse request
         try:
-            data, meta = self._parse_request()
+            data, _ = self._parse_request()
         except Exception as e:
             abort(400, message='Unbale to parse request: ' + str(e))
         if data == {}:
@@ -111,7 +118,7 @@ class Predict(Resource):
         except Exception as e:
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
-        response = self._prepare_response(res, meta)
+        response = self._prepare_response(res)
         if response is None:
             abort(400, message='Unable to prepare response')
         return response
