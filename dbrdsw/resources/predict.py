@@ -61,10 +61,6 @@ class Predict(Resource):
             resp['text'] = args['text']
             resp['metadata']['text'] = {}
 
-        # if len(resp['data']) == 1:
-        #     for k in resp['data']:
-        #         return resp['data'][k], resp['metadata'][k]
-
         return resp['data'], resp['metadata']
 
     def _prepare_response(self, response):
@@ -75,19 +71,20 @@ class Predict(Resource):
         if 'image' in output_spec:
             if 'list' in output_spec:
                 for i, v in enumerate(response):
-                    buf = io.BytesIO(v['image'])
-                    fields['image-{}'.format(i)] = ('filename',
-                                                    buf,)
+                    buf = io.BytesIO(v['image']['payload'])
+                    ext = v['image']['ext']
+                    fields['image-{}'.format(i)] = (
+                        'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
             else:
-                buf = io.BytesIO(response['image'])
-                fields['image'] = ('filename', buf,)
+                buf = io.BytesIO(response['image']['payload'])
+                ext = response['image']['ext']
+                fields['image'] = (
+                    'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
 
         def _form_header(value):
             if 'list' in output_spec:
-                l = []
-                for v in response:
-                    l.append(v[value])
-                fields[value] = json.dumps(l)
+                for i, v in enumerate(response):
+                    fields['{}-{}'.format(value, i)] = v[value]
             else:
                 fields[value] = response[value]
             return fields

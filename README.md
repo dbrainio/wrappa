@@ -46,7 +46,10 @@ Array of bytes representation of an image will be passed to DSModel.predict
 Array of bytes representation of an image is expecting to be produced from DSModel.predict
 ```json
 {
-  "image": "bytes representaion of image"
+  "image": {
+    "payload": "bytes representaion of image",
+    "ext": "jpg"
+  }
 }
 ```
 
@@ -113,7 +116,14 @@ class DSModel:
     pass
 
   def predict(self, data):
-    return [x**2 for x in data]
+    return [{
+      'image': {
+        'payload': 'bytes representation',
+        'ext': 'jpg'
+      },
+      'text': 'some **markdown** __text__',
+      'image_url': 'path/to/image'
+    } for x in data]
 ```
 
 ## Server description
@@ -123,13 +133,22 @@ GET /info -> returns `server_info` section of config.
 
 POST /predict ->
 Expect input as follows:
+Content-Type: multipart/form-data
 
 **image**
 
-Content-Type: multipart/form-data
+Name: `file` for raw data
 
-Name: `file`
+or
 
+Name: `image_url` for image url
+
+**text**
+
+Name: `text`
+
+## Server response
+Server returns multipart/form-data.
 
 ## How to use
 It's simple.
