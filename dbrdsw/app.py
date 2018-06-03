@@ -11,7 +11,6 @@ class App:
     def __init__(self, debug=False, **kwargs):
 
         # Parse kwargs
-        server_info = kwargs['server_info']
         self._port = kwargs['port']
         self._debug = debug
 
@@ -27,7 +26,6 @@ class App:
         api = Api(app)
 
         api.add_resource(Healthcheck, '/healthcheck')
-        api.add_resource(Info.setup(**server_info), '/info')
         api.add_resource(Predict.setup(**kwargs), '/predict')
 
         self._api = api
