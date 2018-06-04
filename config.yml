@@ -1,6 +1,6 @@
 server_info:
   address: "http://127.0.0.1:8000"
-  passphrase: "12345"
+  passphrase: "123456"
   specification:
     input:
       - image

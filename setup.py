@@ -48,13 +48,14 @@ install_requires = [
     'Flask-RESTful>=0.3.6',
     'Flask>=1.0.2',
     'python-consul>=1.0.1',
-    'requests>=2.13.0'
+    'requests>=2.13.0',
+    'requests-toolbelt>=0.8.0'
 ]
 
 CONFIG = {
     'name': 'dbrdsw',
     'url': '',
-    'version': '0.0.4',
+    'version': '0.0.5',
     'description': 'dbrdsw wraps ds app in http server',
     'author': 'skananykhin',
     'test_suite': 'dbrdsw',

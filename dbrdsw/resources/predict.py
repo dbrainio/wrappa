@@ -71,28 +71,45 @@ class Predict(Resource):
         if 'image' in output_spec:
             if 'list' in output_spec:
                 for i, v in enumerate(response):
+                    if not isinstance(v['image']['payload'], bytes):
+                        raise TypeError('Expecting type bytes for image.payload, got {}'.format(
+                            type(v['image']['payload'])))
+                    if not v['image']['ext'] or not isinstance(v['image']['ext'], str):
+                        raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
+                            type(v['image']['ext'])))
                     buf = io.BytesIO(v['image']['payload'])
                     ext = v['image']['ext']
                     fields['image-{}'.format(i)] = (
                         'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
             else:
+                raise TypeError('Expecting type bytes for image.payload, got {}'.format(
+                    type(response['image']['payload'])))
+                if not v['image']['ext'] or isinstance(v['image']['ext'], str):
+                    raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
+                        type(response['image']['ext'])))
                 buf = io.BytesIO(response['image']['payload'])
                 ext = response['image']['ext']
                 fields['image'] = (
                     'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
 
-        def _form_header(value):
+        def _add_fields_text_value(value):
             if 'list' in output_spec:
                 for i, v in enumerate(response):
+                    if not isinstance(v[value], str):
+                        raise TypeError('Expecting type str for {}, got {}'.format(
+                            value, type(v[value])))
                     fields['{}-{}'.format(value, i)] = v[value]
             else:
+                if not isinstance(response[value], str):
+                    raise TypeError('Expecting type str for {}, got {}'.format(
+                        value, type(response[value])))
                 fields[value] = response[value]
             return fields
 
         if 'image_url' in output_spec:
-            fields = _form_header('image_url')
+            fields = _add_fields_text_value('image_url')
         if 'text' in output_spec:
-            fields = _form_header('text')
+            fields = _add_fields_text_value('text')
 
         me = MultipartEncoder(fields=fields)
         resp = make_response(me.to_string())

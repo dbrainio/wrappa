@@ -4,7 +4,7 @@ from flask import Flask
 from flask_restful import Api
 import consul
 
-from .resources import Healthcheck, Info, Predict
+from .resources import Healthcheck, Predict
 
 
 class App:
@@ -31,7 +31,8 @@ class App:
         self._api = api
         self._app = app
 
-    def _register_consul(self, config):
+    @staticmethod
+    def _register_consul(config):
         consul_config = config.get('consul')
         if consul_config is None:
             raise EnvironmentError('missin consul in config')
