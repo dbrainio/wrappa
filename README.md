@@ -39,6 +39,21 @@ All specification can be passed as mixins.
 **image**
 
 Array of bytes representation of an image will be passed to DSModel.predict
+```json
+{
+  "image": {
+    "payload": "bytes representaion of image",
+    "ext": "jpg"
+  }
+}
+```
+
+**text**
+```json
+{
+  "text": "some text"
+}
+```
 
 ### Output
 **image**

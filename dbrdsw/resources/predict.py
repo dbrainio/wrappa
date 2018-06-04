@@ -1,6 +1,5 @@
 import importlib.util
 import io
-import json
 
 from flask_restful import abort, reqparse, Resource
 from flask import make_response
@@ -36,7 +35,7 @@ class Predict(Resource):
         args = parse.parse_args()
 
         input_spec = self._server_info['specification']['input']
-        resp = {'data': {}, 'metadata': {}}
+        resp = {}
         if 'image' in input_spec:
             f = args['file']
             filename = None
@@ -46,22 +45,24 @@ class Predict(Resource):
                 r = requests.get(args['image_url'])
                 buf.write(r.content)
                 buf.flush()
-                filename = ''.join(args['image_url'].split(
-                    '/')[-1].split('?')[:-1])
+
+                tmp = args['image_url'].split('/')[-1].split('?')
+                if len(tmp) <= 1:
+                    filename = ''.join(tmp)
+                else:
+                    filename = ''.join(tmp[:-1])
             else:
                 f.save(buf)
                 f.close()
                 filename = f.filename
-            resp['data']['image'] = buf.getvalue()
-            resp['metadata']['image'] = {
-                'filename': filename,
+            resp['image'] = {
+                'payload': buf.getvalue(),
                 'ext': filename.split('.')[-1]
             }
         if 'text' in input_spec:
             resp['text'] = args['text']
-            resp['metadata']['text'] = {}
 
-        return resp['data'], resp['metadata']
+        return resp
 
     def _prepare_response(self, response):
         output_spec = self._server_info['specification']['output']
@@ -76,17 +77,18 @@ class Predict(Resource):
                             type(v['image']['payload'])))
                     if not v['image']['ext'] or not isinstance(v['image']['ext'], str):
                         raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
-                            type(v['image']['ext'])))
+                            v['image']['ext']))
                     buf = io.BytesIO(v['image']['payload'])
                     ext = v['image']['ext']
                     fields['image-{}'.format(i)] = (
                         'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
             else:
-                raise TypeError('Expecting type bytes for image.payload, got {}'.format(
-                    type(response['image']['payload'])))
-                if not v['image']['ext'] or isinstance(v['image']['ext'], str):
+                if not isinstance(response['image']['payload'], bytes):
+                    raise TypeError('Expecting type bytes for image.payload, got {}'.format(
+                        type(response['image']['payload'])))
+                if not response['image']['ext'] or not isinstance(response['image']['ext'], str):
                     raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
-                        type(response['image']['ext'])))
+                        response['image']['ext']))
                 buf = io.BytesIO(response['image']['payload'])
                 ext = response['image']['ext']
                 fields['image'] = (
@@ -119,7 +121,7 @@ class Predict(Resource):
     def post(self):
         # Parse request
         try:
-            data, _ = self._parse_request()
+            data = self._parse_request()
         except Exception as e:
             abort(400, message='Unbale to parse request: ' + str(e))
         if data == {}:

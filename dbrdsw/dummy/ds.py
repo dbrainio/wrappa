@@ -6,16 +6,10 @@ class DSModel:
     def predict(self, data):
         res = [[
             {
-                'image': {
-                    'payload': v['image'],
-                    'ext': 'jpg'
-                },
+                'image': v['image'],
                 'text': 'Test1',
             }, {
-                'image': {
-                    'payload': v['image'],
-                    'ext': 'jpg'
-                },
+                'image': v['image'],
                 'text': 'Test2',
             }] for v in data]
         return res

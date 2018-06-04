@@ -55,7 +55,7 @@ install_requires = [
 CONFIG = {
     'name': 'dbrdsw',
     'url': '',
-    'version': '0.0.5',
+    'version': '0.0.6',
     'description': 'dbrdsw wraps ds app in http server',
     'author': 'skananykhin',
     'test_suite': 'dbrdsw',
