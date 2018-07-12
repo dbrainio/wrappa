@@ -54,5 +54,9 @@ class App:
 
         _consul.kv.put(server_name, json.dumps(server_info))
 
+    @property
+    def app(self):
+        return self._app
+
     def start(self):
         self._app.run(host='0.0.0.0', port=self._port, debug=self._debug)

@@ -24,15 +24,26 @@ class Predict(Resource):
         return cls
 
     def _parse_request(self):
-        parse = reqparse.RequestParser()
-        parse.add_argument(
+        parser = reqparse.RequestParser()
+        parser.add_argument(
             'file', type=werkzeug.datastructures.FileStorage, location='files')
-        parse.add_argument(
+        parser.add_argument(
             'image_url', type=str)
-        parse.add_argument(
+        parser.add_argument(
             'text', type=str
         )
-        args = parse.parse_args()
+        parser.add_argument('Authorization', type=str, location='headers')
+        args = parser.parse_args()
+
+        if self._server_info['passphrase']:
+            if args['Authorization'] is None:
+                return None
+            if 'Token' in args['Authorization']:
+                token = args['Authorization'][6:]
+            else:
+                token = args['Authorization']
+            if token != self._server_info['passphrase']:
+                return None
 
         input_spec = self._server_info['specification']['input']
         resp = {}
@@ -64,7 +75,28 @@ class Predict(Resource):
 
         return resp
 
-    def _prepare_response(self, response):
+    @staticmethod
+    def _response_type():
+        parser = reqparse.RequestParser()
+        parser.add_argument('Access', type=str, location='headers')
+        args = parser.parse_args()
+        access_type = args['Access']
+
+        if access_type in [None, 'multipart/form-data']:
+            return 'multipart/form-data'
+        elif access_type == 'application/json':
+            return 'application/json'
+
+        return None
+
+    def _prepare_json_response(self, response):
+        output_spec = self._server_info['specification']['output']
+        if not isinstance(response, (dict, list,)) or 'json' not in output_spec:
+            return None
+
+        return response
+
+    def _prepare_form_data_response(self, response):
         output_spec = self._server_info['specification']['output']
         resp = make_response()
         fields = {}
@@ -120,21 +152,39 @@ class Predict(Resource):
 
     def post(self):
         # Parse request
+        response_type = self._response_type()
+        if response_type is None:
+            abort(400, message='Invalid Access header value')
+
         try:
             data = self._parse_request()
         except Exception as e:
             abort(400, message='Unbale to parse request: ' + str(e))
+        if data is None:
+            abort(403, message='Forbidden')
         if data == {}:
             abort(400, message='Invalid data')
+
         # Send data to request
         try:
             # Predict should accept array of objects
             # For now just create array of a single object
-            [res, *_] = self._ds_model.predict([data])
+            if 'json' in self._server_info['specification']['output']:
+                [res, *_] = self._ds_model.predict([data],
+                                                   json=response_type == 'application/json')
+            else:
+                f_kwargs = {}
+                if 'json' in self._ds_model.predict.__code__.co_varnames:
+                    f_kwargs['json'] = False
+
+                [res, *_] = self._ds_model.predict([data], **f_kwargs)
         except Exception as e:
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
-        response = self._prepare_response(res)
+        response = {
+            'multipart/form-data': self._prepare_form_data_response,
+            'application/json': self._prepare_json_response
+        }[response_type](res)
         if response is None:
             abort(400, message='Unable to prepare response')
         return response

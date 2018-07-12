@@ -9,12 +9,13 @@ server_info:
       - list
       - image
       - text
+      - json
   name: "test app"
   invitation_message: "send image"
 port: 8000
-consul:
-  host: 127.0.0.1
-  port: 8500
+# consul:
+#   host: 127.0.0.1
+#   port: 8500
 ds_model_config:
   model_path: '/Users/sergey/work/dbrain/programming/dbrain-ds-server-wrapper/dbrdsw/dummy/ds.py'
   config: {}

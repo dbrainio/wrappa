@@ -42,7 +42,7 @@ Array of bytes representation of an image will be passed to DSModel.predict
 ```json
 {
   "image": {
-    "payload": "bytes representaion of image",
+    "payload": "bytes representation of image",
     "ext": "jpg"
   }
 }
@@ -62,7 +62,7 @@ Array of bytes representation of an image is expecting to be produced from DSMod
 ```json
 {
   "image": {
-    "payload": "bytes representaion of image",
+    "payload": "bytes representation of image",
     "ext": "jpg"
   }
 }
@@ -99,7 +99,7 @@ output:
 then DSModel predict for each input should return following object:
 ```json
 {
-  "image": "bytes representaion of image",
+  "image": "bytes representation of image",
   "text": "some **markdown** __text__"
 }
 ```
@@ -119,6 +119,31 @@ then you need to return following object:
 }]
 ```
 
+**json**
+
+This one is tricky. If you need to create JSON api, provide this key. It means,
+that you need to take additional argument in predict model `json`. If it's true,
+return valid JSON, if false, return values appropriate for your output specification.
+You can return anything you like ignoring any other specification.
+
+If you provide:
+```yaml
+output:
+  - image_url
+  - text
+  - list
+  - json
+```
+then you need to return following object:
+```json
+[{
+  "image_url": "path/to/image",
+  "text": "some **markdown** __text__",
+  "some_other_property": 42,
+  "and_another_one": "foo"
+}]
+```
+
 ## DSModel interface
 DSModel need to be accessible from provided path, what means it need to be importable.
 It means [relative imports](https://docs.python.org/2.5/whatsnew/pep-328.html) and etc.
@@ -130,7 +155,13 @@ class DSModel:
   def __init__(self, **kwargs):
     pass
 
-  def predict(self, data):
+  def predict(self, data, json=False):
+    if json:
+      return [{
+        'text': 'hello',
+        'value': 'sup?',
+        'something_else': 42
+      } for x in data]
     return [{
       'image': {
         'payload': 'bytes representation',
@@ -163,7 +194,14 @@ Name: `image_url` for image url
 Name: `text`
 
 ## Server response
-Server returns multipart/form-data.
+Server returns multipart/form-data or application/json if `json` field provided in output specification.
+
+## Working with dbrdsw server
+
+If you provide passphrase it will be required to get access to your service.
+Pass passphrase in `Authorization` header like this `Authorization: Token your_passphrase`.
+
+In order to get access to JSON version of api make sure that `json` included in output specification and provide following header `Access: application/json`.
 
 ## How to use
 It's simple.

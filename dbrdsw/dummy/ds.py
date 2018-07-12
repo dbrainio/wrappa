@@ -3,7 +3,14 @@ class DSModel:
     def __init__(self, **kwargs):
         pass
 
-    def predict(self, data):
+    def predict(self, data, json):
+        if json:
+            return [[{
+                'text': 'Test1'
+            }, {
+                'text': 'Test2'
+            }]]
+
         res = [[
             {
                 'image': v['image'],
