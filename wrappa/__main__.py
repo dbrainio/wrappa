@@ -1,3 +1,7 @@
+from gevent import monkey
+
+monkey.patch_all(subprocess=True)
+
 import argparse
 import multiprocessing
 
@@ -19,7 +23,6 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
         super(StandaloneApplication, self).__init__()
 
     def load_config(self):
-        print(self.cfg.settings)
         config = dict([(key, value) for key, value in iteritems(self.options)
                        if key in self.cfg.settings and value is not None])
         for key, value in iteritems(config):

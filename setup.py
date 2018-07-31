@@ -57,7 +57,7 @@ install_requires = [
 CONFIG = {
     'name': 'wrappa',
     'url': '',
-    'version': '0.1.1',
+    'version': '0.1.2',
     'description': 'wrappa wraps ds app in http server',
     'author': 'seka17',
     'test_suite': 'wrappa',
