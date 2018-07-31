@@ -1,13 +1,14 @@
 import argparse
+import multiprocessing
 
 import gunicorn.app.base
 from gunicorn.six import iteritems
 
-from dbrdsw import App, read_config
+from wrappa import App, read_config
 
 
 def number_of_workers():
-    return 1
+    return (multiprocessing.cpu_count() * 2) + 1
 
 
 class StandaloneApplication(gunicorn.app.base.BaseApplication):
@@ -18,6 +19,7 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
         super(StandaloneApplication, self).__init__()
 
     def load_config(self):
+        print(self.cfg.settings)
         config = dict([(key, value) for key, value in iteritems(self.options)
                        if key in self.cfg.settings and value is not None])
         for key, value in iteritems(config):
@@ -41,7 +43,8 @@ def main():
 
     options = {
         'bind': '%s:%s' % ('0.0.0.0', config['port']),
-        'workers': number_of_workers(),
+        'workers': 1,
+        'worker_class': 'gevent'
     }
 
     StandaloneApplication(app.app, options).run()

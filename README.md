@@ -1,5 +1,5 @@
 ## Description
-**dbrdsw** is a util to wrap any interface implementing DSModel in a http server.
+**wrappa** is a util to wrap any interface implementing DSModel in a http server.
 
 ## Config
 ```yaml
@@ -147,7 +147,7 @@ then you need to return following object:
 ## DSModel interface
 DSModel need to be accessible from provided path, what means it need to be importable.
 It means [relative imports](https://docs.python.org/2.5/whatsnew/pep-328.html) and etc.
-`DSModel` naming is required for dbrdsw to work.
+`DSModel` naming is required for wrappa to work.
 
 DSModel interface example:
 ```python
@@ -196,7 +196,7 @@ Name: `text`
 ## Server response
 Server returns multipart/form-data or application/json if `json` field provided in output specification.
 
-## Working with dbrdsw server
+## Working with wrappa server
 
 If you provide passphrase it will be required to get access to your service.
 Pass passphrase in `Authorization` header like this `Authorization: Token your_passphrase`.
@@ -209,10 +209,10 @@ It's simple.
 Installation: `python3 setup.py install`
 
 If everything is fine, you'll be able to execute following command in your terminal:
-`dbrdsw --help`
+`wrappa --help`
 
 To run server:
-`dbrdsw --config './config.yml'`
+`wrappa --config './config.yml'`
 
 To run server in dev mode:
-`dbrdsw --config './config.yml' --debug=true`
+`wrappa --config './config.yml' --debug=true`

@@ -34,7 +34,7 @@ class PylintCommand(distutils.cmd.Command):
         command = ['pylint']
         if self.pylint_rcfile:
             command.append('--rcfile=%s' % self.pylint_rcfile)
-        command.append(os.getcwd() + '/dbrdsw')
+        command.append(os.getcwd() + '/wrappa')
         self.announce(
             'Running command: %s' % str(command),
             level=distutils.log.INFO)
@@ -50,20 +50,21 @@ install_requires = [
     'python-consul>=1.0.1',
     'requests>=2.13.0',
     'requests-toolbelt>=0.8.0',
-    'gunicorn>=19.7.1'
+    'gunicorn>=19.7.1',
+    'gevent>=0.13'
 ]
 
 CONFIG = {
-    'name': 'dbrdsw',
+    'name': 'wrappa',
     'url': '',
-    'version': '0.1.0',
-    'description': 'dbrdsw wraps ds app in http server',
-    'author': 'skananykhin',
-    'test_suite': 'dbrdsw',
+    'version': '0.1.1',
+    'description': 'wrappa wraps ds app in http server',
+    'author': 'seka17',
+    'test_suite': 'wrappa',
     'packages': find_packages(exclude=['dummy', 'tests', '*.tests', '*.tests.*']),
     'entry_points': {
         'console_scripts': [
-            'dbrdsw = dbrdsw.__main__:main',
+            'wrappa = wrappa.__main__:main',
         ],
     },
     'install_requires': install_requires,

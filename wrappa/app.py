@@ -35,7 +35,7 @@ class App:
     def _register_consul(config):
         consul_config = config.get('consul')
         if consul_config is None:
-            raise EnvironmentError('missin consul in config')
+            raise EnvironmentError('missing consul in config')
 
         server_info = config['server_info']
         server_name = server_info['name']
