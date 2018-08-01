@@ -216,3 +216,6 @@ To run server:
 
 To run server in dev mode:
 `wrappa --config './config.yml' --debug=true`
+
+To run severv with changed timeout (for better debugging experience):
+`wrappa --config `./config.yml' --timeout 300
