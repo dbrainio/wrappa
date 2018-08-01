@@ -38,6 +38,8 @@ def main():
                         help='path to config.yml (default: ./config.yml)')
     parser.add_argument('--debug', '-d', default=False,
                         help='True to run in debug mode (default: False)')
+    parser.add_argument('--timeout', '-t', default=30,
+                        help='Timeout for gunicorn in seconds (default: 30)')
 
     args = parser.parse_args()
     config = read_config(args.config)
@@ -46,6 +48,7 @@ def main():
 
     options = {
         'bind': '%s:%s' % ('0.0.0.0', config['port']),
+        'timeout': args.timeout,
         'workers': 1,
         'worker_class': 'gevent'
     }
