@@ -215,4 +215,7 @@ To run server:
 `wrappa --config './config.yml'`
 
 To run server in dev mode:
-`wrappa --config './config.yml' --debug=true`
+`wrappa --config './config.yml' --debug`
+
+To run server without consul support:
+`wrappa --config './config.yml' --disable-consul`

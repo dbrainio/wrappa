@@ -8,19 +8,20 @@ from .resources import Healthcheck, Predict
 
 
 class App:
-    def __init__(self, debug=False, **kwargs):
+    def __init__(self, debug=False, disable_consul=False, **kwargs):
 
         # Parse kwargs
         self._port = kwargs['port']
         self._debug = debug
 
-        try:
-            self._register_consul(kwargs)
-        except Exception as e:
-            if not self._debug:
-                raise e
-            else:
-                print('[Warning] Missing consul config')
+        if not disable_consul:
+            try:
+                self._register_consul(kwargs)
+            except Exception as e:
+                if not self._debug:
+                    raise e
+                else:
+                    print('[Warning] Missing consul config')
 
         app = Flask(__name__)
         api = Api(app)
