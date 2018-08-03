@@ -78,13 +78,13 @@ class Predict(Resource):
     @staticmethod
     def _response_type():
         parser = reqparse.RequestParser()
-        parser.add_argument('Access', type=str, location='headers')
+        parser.add_argument('Accept', type=str, location='headers')
         args = parser.parse_args()
-        access_type = args['Access']
+        accept_type = args['Accept']
 
-        if access_type in [None, 'multipart/form-data']:
+        if accept_type in [None, 'multipart/form-data']:
             return 'multipart/form-data'
-        elif access_type == 'application/json':
+        elif accept_type == 'application/json':
             return 'application/json'
 
         return None
