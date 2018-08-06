@@ -1,10 +1,21 @@
 import json
 
 from flask import Flask
-from flask_restful import Api
+from flask_restful import Api, output_json
 import consul
 
 from .resources import Healthcheck, Predict
+
+
+class UnicodeApi(Api):
+    def __init__(self, *args, **kwargs):
+        super(UnicodeApi, self).__init__(*args, **kwargs)
+        self.app.config['RESTFUL_JSON'] = {
+            'ensure_ascii': False
+        }
+        self.representations = {
+            'application/json; charset=utf-8': output_json,
+        }
 
 
 class App:
@@ -24,7 +35,7 @@ class App:
                     print('[Warning] Missing consul config')
 
         app = Flask(__name__)
-        api = Api(app)
+        api = UnicodeApi(app)
 
         api.add_resource(Healthcheck, '/healthcheck')
         api.add_resource(Predict.setup(**kwargs), '/predict')
