@@ -1,7 +1,7 @@
 import json
 
 from flask import Flask
-from flask_restful import Api, output_json
+from flask_restful import Api
 import consul
 
 from .resources import Healthcheck, Predict
@@ -12,9 +12,6 @@ class UnicodeApi(Api):
         super(UnicodeApi, self).__init__(*args, **kwargs)
         self.app.config['RESTFUL_JSON'] = {
             'ensure_ascii': False
-        }
-        self.representations = {
-            'application/json; charset=utf-8': output_json,
         }
 
 
