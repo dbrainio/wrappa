@@ -37,7 +37,7 @@ def main():
     parser.add_argument('--config', '-c', default='./config.yml',
                         help='path to config.yml (default: ./config.yml)')
     parser.add_argument('--disable-consul', action='store_true',
-                        help='True to sync with consul (default: True)')
+                        help='True to not to sync with consul (default: False)')
     parser.add_argument('--debug', '-d', action='store_true',
                         help='True to run in debug mode (default: False)')
 
