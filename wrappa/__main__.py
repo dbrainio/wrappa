@@ -1,6 +1,6 @@
 from gevent import monkey
 
-monkey.patch_all(subprocess=True)
+# monkey.patch_all(subprocess=True)
 
 import argparse
 import multiprocessing
