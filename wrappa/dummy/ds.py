@@ -8,7 +8,7 @@ class DSModel:
             return [[{
                 'text': 'Test1'
             }, {
-                'text': 'Test2'
+                'text': 'Тест2'
             }]]
 
         res = [[
@@ -17,6 +17,6 @@ class DSModel:
                 'text': 'Test1',
             }, {
                 'image': v['image'],
-                'text': 'Test2',
+                'text': 'Тест2',
             }] for v in data]
         return res

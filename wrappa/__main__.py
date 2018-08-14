@@ -1,6 +1,6 @@
 from gevent import monkey
 
-monkey.patch_all(subprocess=True)
+# monkey.patch_all(subprocess=True)
 
 import argparse
 import multiprocessing
@@ -36,7 +36,9 @@ def main():
     parser = argparse.ArgumentParser(description='Process config.yml file')
     parser.add_argument('--config', '-c', default='./config.yml',
                         help='path to config.yml (default: ./config.yml)')
-    parser.add_argument('--debug', '-d', default=False,
+    parser.add_argument('--disable-consul', action='store_true',
+                        help='True to not to sync with consul (default: False)')
+    parser.add_argument('--debug', '-d', action='store_true',
                         help='True to run in debug mode (default: False)')
     parser.add_argument('--timeout', '-t', default=30,
                         help='Timeout for gunicorn in seconds (default: 30)')
@@ -44,7 +46,9 @@ def main():
     args = parser.parse_args()
     config = read_config(args.config)
 
-    app = App(debug=args.debug, **config)
+    print(args)
+
+    app = App(debug=args.debug, disable_consul=args.disable_consul, **config)
 
     options = {
         'bind': '%s:%s' % ('0.0.0.0', config['port']),
@@ -53,7 +57,8 @@ def main():
         'worker_class': 'gevent'
     }
 
-    StandaloneApplication(app.app, options).run()
+    # StandaloneApplication(app.app, options).run()
+    app.start()
 
 
 if __name__ == '__main__':
