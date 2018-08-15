@@ -1,9 +1,13 @@
+from time import sleep
+
+
 class DSModel:
 
     def __init__(self, **kwargs):
         pass
 
     def predict(self, data, json):
+        # sleep(60)
         if json:
             return [[{
                 'text': 'Test1'
