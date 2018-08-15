@@ -215,9 +215,7 @@ To run server:
 `wrappa --config './config.yml'`
 
 To run server in dev mode:
-
-To run server with changed timeout (for better debugging experience):
-`wrappa --config './config.yml' --timeout 300`
+`wrappa --config './config.yml' --debug`
 
 To run server without consul support:
 `wrappa --config './config.yml' --disable-consul`
