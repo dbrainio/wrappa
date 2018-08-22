@@ -51,7 +51,8 @@ install_requires = [
     'requests>=2.13.0',
     'requests-toolbelt>=0.8.0',
     'gunicorn>=19.7.1',
-    'gevent>=0.13'
+    'gevent>=0.13',
+    'pyyaml>=3.13'
 ]
 
 CONFIG = {
