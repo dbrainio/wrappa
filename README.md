@@ -208,6 +208,9 @@ It's simple.
 
 Installation: `python3 setup.py install`
 
+Or you can buid distribution wheel by running `make` in repository root. 
+Your wheel will be stored in `dist` directory. You can install it by running `pip install wrappa-<version>-py3-none-any.whl`.
+
 If everything is fine, you'll be able to execute following command in your terminal:
 `wrappa --help`
 
