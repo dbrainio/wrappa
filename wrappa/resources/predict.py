@@ -23,10 +23,49 @@ class Predict(Resource):
         cls._ds_model = ds_lib.DSModel(**cls._ds_model_config['config'])
         return cls
 
+    @staticmethod
+    def _parse_file_object(args, resp, key):
+        filename, buf = None, None
+        if args.get(key) is not None:
+            f = args[key]
+            buf = io.BytesIO()
+            f.save(buf)
+            f.close()
+            filename = f.filename
+        if args.get(f'{key}_url') is not None:
+            obj_url = args[f'{key}_url']
+            # Download file
+            r = requests.get(obj_url)
+            buf = io.BytesIO()
+            buf.write(r.content)
+            buf.flush()
+
+            tmp = obj_url.split('/')[-1].split('?')
+            if len(tmp) <= 1:
+                filename = ''.join(tmp)
+            else:
+                filename = ''.join(tmp[:-1])
+        if filename is not None and buf is not None:
+            resp[key] = {
+                'payload': buf.getvalue(),
+                'ext': filename.split('.')[-1]
+            }
+        return resp
+
+    @staticmethod
+    def _parse_text(args, resp):
+        if args.get('text') is not None:
+            resp['text'] = args['text']
+        return resp
+
     def _parse_request(self):
         parser = reqparse.RequestParser()
         parser.add_argument(
             'file', type=werkzeug.datastructures.FileStorage, location='files')
+        parser.add_argument(
+            'image', type=werkzeug.datastructures.FileStorage, location='files')
+        parser.add_argument(
+            'file_url', type=str)
         parser.add_argument(
             'image_url', type=str)
         parser.add_argument(
@@ -48,31 +87,11 @@ class Predict(Resource):
         input_spec = self._server_info['specification']['input']
         resp = {}
         if 'image' in input_spec:
-            f = args['file']
-            filename = None
-            buf = io.BytesIO()
-            if f is None:
-                # Download file
-                r = requests.get(args['image_url'])
-                buf.write(r.content)
-                buf.flush()
-
-                tmp = args['image_url'].split('/')[-1].split('?')
-                if len(tmp) <= 1:
-                    filename = ''.join(tmp)
-                else:
-                    filename = ''.join(tmp[:-1])
-            else:
-                f.save(buf)
-                f.close()
-                filename = f.filename
-            resp['image'] = {
-                'payload': buf.getvalue(),
-                'ext': filename.split('.')[-1]
-            }
+            resp = self._parse_file_object(args, resp, 'image')
+        if 'file' in input_spec:
+            resp = self._parse_file_object(args, resp, 'file')
         if 'text' in input_spec:
-            resp['text'] = args['text']
-
+            resp = self._parse_text(args, resp)
         return resp
 
     @staticmethod
@@ -96,54 +115,76 @@ class Predict(Resource):
 
         return response
 
+    @staticmethod
+    def _add_fields_file_object_value(fields, value, key, index=None):
+        v = value.get(key)
+        if v is None:
+            return fields
+        ext = v['ext']
+        payload = v['payload']
+        payload_type = type(payload)
+        if not isinstance(payload, bytes):
+            raise TypeError(
+                f'Expecting type bytes for image.payload, got {payload_type}')
+        if not ext or not isinstance(ext, str):
+            raise TypeError(
+                f'Wrong extension, expecting jpg, png or gif, got {ext}')
+        buf = io.BytesIO(payload)
+        if index is not None:
+            if key == 'image':
+                fields[f'{key}-{index}'] = (
+                    f'filename.{ext}', buf, f'image/{ext}')
+            else:
+                fields[f'{key}-{index}'] = (
+                    f'filename.{ext}', buf, 'applications/octet-stream')
+        else:
+            if key == 'image':
+                fields[key] = (
+                    f'filename.{ext}', buf, f'image/{ext}')
+            else:
+                fields[key] = (
+                    f'filename.{ext}', buf, 'applications/octet-stream')
+        return fields
+
+    @staticmethod
+    def _add_fields_text_value(fields, value, key, index=None):
+        v = value.get(key)
+        if v is None:
+            return fields
+        value_type = type(v)
+        if not isinstance(v, str):
+            raise TypeError(
+                f'Expecting type str for {value}, got {value_type}')
+        if index is not None:
+            fields[f'{value}-{index}'] = v
+        else:
+            fields[value] = v
+        return fields
+
     def _prepare_form_data_response(self, response):
         output_spec = self._server_info['specification']['output']
         resp = make_response()
         fields = {}
 
-        if 'image' in output_spec:
-            if 'list' in output_spec:
-                for i, v in enumerate(response):
-                    if not isinstance(v['image']['payload'], bytes):
-                        raise TypeError('Expecting type bytes for image.payload, got {}'.format(
-                            type(v['image']['payload'])))
-                    if not v['image']['ext'] or not isinstance(v['image']['ext'], str):
-                        raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
-                            v['image']['ext']))
-                    buf = io.BytesIO(v['image']['payload'])
-                    ext = v['image']['ext']
-                    fields['image-{}'.format(i)] = (
-                        'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
-            else:
-                if not isinstance(response['image']['payload'], bytes):
-                    raise TypeError('Expecting type bytes for image.payload, got {}'.format(
-                        type(response['image']['payload'])))
-                if not response['image']['ext'] or not isinstance(response['image']['ext'], str):
-                    raise TypeError('Wrong extension, expecting jpg or png, got {}'.format(
-                        response['image']['ext']))
-                buf = io.BytesIO(response['image']['payload'])
-                ext = response['image']['ext']
-                fields['image'] = (
-                    'filename.{}'.format(ext), buf, 'image/{}'.format(ext))
+        for spec in ['image', 'file']:
+            if spec in output_spec:
+                if 'list' in output_spec:
+                    for i, v in enumerate(response):
+                        fields = self._add_fields_file_object_value(
+                            fields, v, spec, index=i)
+                else:
+                    fields = self._add_fields_file_object_value(
+                        fields, response, spec)
 
-        def _add_fields_text_value(value):
-            if 'list' in output_spec:
-                for i, v in enumerate(response):
-                    if not isinstance(v[value], str):
-                        raise TypeError('Expecting type str for {}, got {}'.format(
-                            value, type(v[value])))
-                    fields['{}-{}'.format(value, i)] = v[value]
-            else:
-                if not isinstance(response[value], str):
-                    raise TypeError('Expecting type str for {}, got {}'.format(
-                        value, type(response[value])))
-                fields[value] = response[value]
-            return fields
-
-        if 'image_url' in output_spec:
-            fields = _add_fields_text_value('image_url')
-        if 'text' in output_spec:
-            fields = _add_fields_text_value('text')
+        for spec in ['image_url', 'file_url', 'text']:
+            if spec in output_spec:
+                if 'list' in output_spec:
+                    for i, v in enumerate(response):
+                        fields = self._add_fields_text_value(
+                            fields, v, spec, index=i)
+                else:
+                    fields = self._add_fields_text_value(
+                        fields, response, spec)
 
         me = MultipartEncoder(fields=fields)
         resp = make_response(me.to_string())
@@ -155,7 +196,6 @@ class Predict(Resource):
         response_type = self._response_type()
         if response_type is None:
             abort(400, message='Invalid Access header value')
-
         try:
             data = self._parse_request()
         except Exception as e:

@@ -4,7 +4,7 @@
 ## Config
 ```yaml
 server_info:
-  # address where this service wil be available
+  # address where this service will be available
   address: "http://localhost:8000"
   # what DSModel expects as an input and what it produce
   specification:
@@ -20,7 +20,7 @@ server_info:
 # port where service will run
 port: 8000
 # connect to consul node
-# for debug it is optionable
+# for debug it is optional
 consul:
   host: 127.0.0.1
   port: 8500
@@ -28,7 +28,7 @@ consul:
 ds_model_config:
   # absolute (!) path to importable (!!!) package
   model_path: 'path/to/DSModel'
-  # config which will be passed to DSModel contructor
+  # config which will be passed to DSModel constructor
   config: {}
 ```
 
@@ -44,6 +44,18 @@ Array of bytes representation of an image will be passed to DSModel.predict
   "image": {
     "payload": "bytes representation of image",
     "ext": "jpg"
+  }
+}
+```
+
+**file**
+
+Array of bytes representation of a file will be passed to DSModel.predict
+```json
+{
+  "file": {
+    "payload": "bytes representation of file",
+    "ext": "zip"
   }
 }
 ```
@@ -74,6 +86,27 @@ DSModel.predict produces following object:
 ```json
 {
   "image_url": "path/to/image"
+}
+```
+
+**file**
+
+Array of bytes representation of a file is expecting to be produced from DSModel.predict
+```json
+{
+  "file": {
+    "payload": "bytes representation of file",
+    "ext": "zip"
+  }
+}
+```
+
+**file_url**
+
+DSModel.predict produces following object:
+```json
+{
+  "file_url": "path/to/file"
 }
 ```
 
@@ -183,11 +216,19 @@ Content-Type: multipart/form-data
 
 **image**
 
-Name: `file` for raw data
+Name: `image` for raw data
 
 or
 
 Name: `image_url` for image url
+
+**file**
+
+Name: `file` for raw data
+
+or
+
+Name: `file_url` for image url
 
 **text**
 
@@ -208,7 +249,7 @@ It's simple.
 
 Installation: `python3 setup.py install`
 
-Or you can buid distribution wheel by running `make` in repository root. 
+Or you can build distribution wheel by running `make` in repository root.
 Your wheel will be stored in `dist` directory. You can install it by running `pip install wrappa-<version>-py3-none-any.whl`.
 
 If everything is fine, you'll be able to execute following command in your terminal:
