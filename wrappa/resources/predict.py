@@ -1,5 +1,7 @@
 import importlib.util
 import io
+import sys
+import traceback
 
 from flask_restful import abort, reqparse, Resource
 from flask import make_response
@@ -179,6 +181,7 @@ class Predict(Resource):
 
                 [res, *_] = self._ds_model.predict([data], **f_kwargs)
         except Exception as e:
+            print(f"DSModel failed to process data with exception \n{traceback.format_exc()}", file=sys.stderr)
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
         response = {
