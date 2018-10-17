@@ -32,7 +32,6 @@ class App:
                     print('[Warning] Missing consul config')
 
         app = Flask(__name__)
-        print('Timeout:', timeout)
         if timeout is not None:
             app.config.update(PERMANENT_SESSION_LIFETIME=timeout)
         api = UnicodeApi(app)

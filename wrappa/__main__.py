@@ -15,6 +15,10 @@ def main():
     args = parser.parse_args()
     config = read_config(args.config)
 
+    if config.get('passphrase'):
+        if isinstance(config['passphrase'], str):
+            config['passphrase'] = [config['passphrase']]
+
     app = App(debug=args.debug, disable_consul=args.disable_consul, **config)
 
     app.start()

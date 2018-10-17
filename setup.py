@@ -52,7 +52,9 @@ install_requires = [
     'requests-toolbelt>=0.8.0',
     'gunicorn>=19.7.1',
     'gevent>=0.13',
-    'pyyaml>=3.13'
+    'pyyaml>=3.13',
+    'numpy>=1.14.0',
+    'opencv-python>=3.4',
 ]
 
 CONFIG = {

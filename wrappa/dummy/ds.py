@@ -1,4 +1,5 @@
 from time import sleep
+from wrappa import WrappaImage, WrappaText, WrappaObject
 
 
 class DSModel:
@@ -7,7 +8,6 @@ class DSModel:
         pass
 
     def predict(self, data, json):
-        # sleep(60)
         if json:
             return [[{
                 'text': 'Test1'
@@ -15,12 +15,15 @@ class DSModel:
                 'text': 'Тест2'
             }]]
 
-        res = [[
-            {
-                'image': v['image'],
-                'text': 'Test1',
-            }, {
-                'image': v['image'],
-                'text': 'Тест2',
-            }] for v in data]
+        res = []
+        for v in data:
+            img = WrappaImage.init_from_ndarray({
+                'payload': v.image.as_ndarray,
+                'ext': v.image.ext
+            })
+            res.append([
+                WrappaObject(img, WrappaText('Test1')),
+                WrappaObject(v.image, WrappaText('Тест2'))
+            ])
+
         return res

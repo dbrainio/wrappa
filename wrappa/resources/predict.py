@@ -1,11 +1,15 @@
 import importlib.util
 import io
+import sys
+import traceback
 
 from flask_restful import abort, reqparse, Resource
 from flask import make_response
 from requests_toolbelt import MultipartEncoder
 import werkzeug
 import requests
+
+from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 
 
 class Predict(Resource):
@@ -24,8 +28,9 @@ class Predict(Resource):
         return cls
 
     @staticmethod
-    def _parse_file_object(args, resp, key):
+    def _parse_file_object(args, key):
         filename, buf = None, None
+        data = None
         if args.get(key) is not None:
             f = args[key]
             buf = io.BytesIO()
@@ -46,17 +51,23 @@ class Predict(Resource):
             else:
                 filename = ''.join(tmp[:-1])
         if filename is not None and buf is not None:
-            resp[key] = {
+            data = {
                 'payload': buf.getvalue(),
                 'ext': filename.split('.')[-1]
             }
-        return resp
+
+        to_wrappa_type = {
+            'image': WrappaImage,
+            'file': WrappaFile
+        }
+        return to_wrappa_type[key](data)
 
     @staticmethod
-    def _parse_text(args, resp):
+    def _parse_text(args):
+        data = None
         if args.get('text') is not None:
-            resp['text'] = args['text']
-        return resp
+            data = args['text']
+        return WrappaText(data)
 
     def _parse_request(self):
         parser = reqparse.RequestParser()
@@ -81,17 +92,17 @@ class Predict(Resource):
                 token = args['Authorization'][6:]
             else:
                 token = args['Authorization']
-            if token != self._server_info['passphrase']:
+            if token not in self._server_info['passphrase']:
                 return None
 
         input_spec = self._server_info['specification']['input']
-        resp = {}
+        resp = WrappaObject()
         if 'image' in input_spec:
-            resp = self._parse_file_object(args, resp, 'image')
+            resp.set_value(self._parse_file_object(args, 'image'))
         if 'file' in input_spec:
-            resp = self._parse_file_object(args, resp, 'file')
+            resp.set_value(self._parse_file_object(args, 'file'))
         if 'text' in input_spec:
-            resp = self._parse_text(args, resp)
+            resp.set_value(self._parse_text(args))
         return resp
 
     @staticmethod
@@ -117,11 +128,11 @@ class Predict(Resource):
 
     @staticmethod
     def _add_fields_file_object_value(fields, value, key, index=None):
-        v = value.get(key)
-        if v is None:
+        # v = value.get(key)
+        if value is None:
             return fields
-        ext = v['ext']
-        payload = v['payload']
+        ext = value['ext']
+        payload = value['payload']
         payload_type = type(payload)
         if not isinstance(payload, bytes):
             raise TypeError(
@@ -148,17 +159,16 @@ class Predict(Resource):
 
     @staticmethod
     def _add_fields_text_value(fields, value, key, index=None):
-        v = value.get(key)
-        if v is None:
+        if value is None:
             return fields
-        value_type = type(v)
-        if not isinstance(v, str):
+        value_type = type(value)
+        if not isinstance(value, str):
             raise TypeError(
                 f'Expecting type str for {value}, got {value_type}')
         if index is not None:
-            fields[f'{value}-{index}'] = v
+            fields[f'{key}-{index}'] = value
         else:
-            fields[value] = v
+            fields[key] = value
         return fields
 
     def _prepare_form_data_response(self, response):
@@ -171,20 +181,33 @@ class Predict(Resource):
                 if 'list' in output_spec:
                     for i, v in enumerate(response):
                         fields = self._add_fields_file_object_value(
-                            fields, v, spec, index=i)
+                            fields, getattr(v, spec).as_dict, spec, index=i)
                 else:
                     fields = self._add_fields_file_object_value(
-                        fields, response, spec)
+                        fields, getattr(response, spec).as_dict, spec)
 
-        for spec in ['image_url', 'file_url', 'text']:
+        for spec in ['image_url', 'file_url']:
             if spec in output_spec:
+                obj_type = {
+                    'file_url': 'file',
+                    'image_url': 'image'
+                }[spec]
                 if 'list' in output_spec:
                     for i, v in enumerate(response):
                         fields = self._add_fields_text_value(
-                            fields, v, spec, index=i)
+                            fields, getattr(v, obj_type).url, spec, index=i)
                 else:
                     fields = self._add_fields_text_value(
-                        fields, response, spec)
+                        fields, getattr(response, obj_type).url, spec)
+
+        if 'text' in output_spec:
+            if 'list' in output_spec:
+                for i, v in enumerate(response):
+                    fields = self._add_fields_text_value(
+                        fields, getattr(v, 'text').text, 'text', index=i)
+            else:
+                fields = self._add_fields_text_value(
+                    fields, getattr(response, 'text').text, 'text')
 
         me = MultipartEncoder(fields=fields)
         resp = make_response(me.to_string())
@@ -199,10 +222,14 @@ class Predict(Resource):
         try:
             data = self._parse_request()
         except Exception as e:
+            print(
+                f'Failed to parse request with exception \
+                \n{traceback.format_exc()}',
+                file=sys.stderr)
             abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
             abort(403, message='Forbidden')
-        if data == {}:
+        if data == WrappaObject():
             abort(400, message='Invalid data')
 
         # Send data to request
@@ -210,8 +237,9 @@ class Predict(Resource):
             # Predict should accept array of objects
             # For now just create array of a single object
             if 'json' in self._server_info['specification']['output']:
+                is_json = response_type == 'application/json'
                 [res, *_] = self._ds_model.predict([data],
-                                                   json=response_type == 'application/json')
+                                                   json=is_json)
             else:
                 f_kwargs = {}
                 if 'json' in self._ds_model.predict.__code__.co_varnames:
@@ -219,6 +247,10 @@ class Predict(Resource):
 
                 [res, *_] = self._ds_model.predict([data], **f_kwargs)
         except Exception as e:
+            print(
+                f'DSModel failed to process data with exception \
+                \n{traceback.format_exc()}',
+                file=sys.stderr)
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response
         response = {

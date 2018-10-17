@@ -1,6 +1,8 @@
 server_info:
   address: "http://127.0.0.1:8000"
-  passphrase: "123456"
+  passphrase:
+    - "123456"
+    - "123457"
   specification:
     input:
       - image
@@ -18,4 +20,5 @@ port: 8000
 #   port: 8500
 ds_model_config:
   model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds.py'
+  # model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/raising_model.py'
   config: {}
