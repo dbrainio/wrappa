@@ -223,8 +223,7 @@ class Predict(Resource):
             data = self._parse_request()
         except Exception as e:
             print(
-                f'Failed to parse request with exception \
-                \n{traceback.format_exc()}',
+                f'Failed to parse request with exception\n{traceback.format_exc()}',
                 file=sys.stderr)
             abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
@@ -248,8 +247,7 @@ class Predict(Resource):
                 [res, *_] = self._ds_model.predict([data], **f_kwargs)
         except Exception as e:
             print(
-                f'DSModel failed to process data with exception \
-                \n{traceback.format_exc()}',
+                f'DSModel failed to process data with exception\n{traceback.format_exc()}',
                 file=sys.stderr)
             abort(400, message='DS model failed to process data: ' + str(e))
         # Prepare and send response

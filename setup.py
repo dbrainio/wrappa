@@ -68,6 +68,7 @@ CONFIG = {
     'entry_points': {
         'console_scripts': [
             'wrappa = wrappa.__main__:main',
+            'wrappa-validate = wrappa.validate:main'
         ],
     },
     'install_requires': install_requires,

@@ -1,0 +1,12 @@
+specification:
+  input:
+    - image
+  output:
+    - list
+    - image
+    - text
+    - json
+ds_model_config:
+  model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds.py'
+  # model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/raising_model.py'
+  config: {}
