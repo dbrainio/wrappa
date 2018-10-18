@@ -1,3 +1,4 @@
+import os
 import tempfile
 
 import requests
@@ -11,12 +12,16 @@ class WrappaFile:
 
     @property
     def payload(self):
-        if self._url is not None and not self._payload:
+        if not self._payload and self._url is not None:
             self._payload = self._download_file()
         return self._payload
 
     @property
     def ext(self):
+        if not self.ext and self._url is not None:
+            tmp = os.path.splitext(self._url)
+            if len(tmp) > 1:
+                self._ext = tmp[-1][1:]
         return self._ext
 
     def url(self):
