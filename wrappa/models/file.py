@@ -5,10 +5,10 @@ import requests
 
 
 class WrappaFile:
-    def __init__(self, data):
-        self._payload = data.get('payload', None)
-        self._ext = data.get('ext', None)
-        self._url = data.get('url', None)
+    def __init__(self, payload=None, ext=None, url=None):
+        self._payload = payload
+        self._ext = ext
+        self._url = url
 
     @property
     def payload(self):
@@ -18,7 +18,7 @@ class WrappaFile:
 
     @property
     def ext(self):
-        if not self.ext and self._url is not None:
+        if not self._ext and self._url is not None:
             tmp = os.path.splitext(self._url)
             if len(tmp) > 1:
                 self._ext = tmp[-1][1:]

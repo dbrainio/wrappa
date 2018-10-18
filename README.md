@@ -62,10 +62,10 @@ All outputs must be wrapped in **WrappaObject**.
 You can add objects as follows:
 ```python
 wo = WrappaObject(
-  WrappaImage({'payload': 'bytes_repr_of_an_image', 'ext': 'jpg'}),
+  WrappaImage(payload= 'bytes_repr_of_an_image', ext='jpg'}),
   WrappaText('some text'))
 # you can pass objects not only in init call
-wo.set_value(WrappaFile({'payload': 'bytes_repr_of_a_file', 'ext': 'zip'}))
+wo.set_value(WrappaFile({payload='bytes_repr_of_a_file', ext='zip'}))
 ```
 
 **image**
@@ -75,7 +75,7 @@ You can init **WrappaImage** with ndarray by using this snippet:
 ```python
 img = np.array([[0]*300]*300, dtype=np.uint8)
 
-wi = WrappaImage.init_from_ndarray({'payload': img, 'ext': 'jpg'})
+wi = WrappaImage.init_from_ndarray(payload=img, ext='jpg'})
 # or from raw bytes
 wi = WrappaImage({'payload': raw_bytes, 'ext': 'jpg'})
 ```
@@ -85,7 +85,7 @@ wi = WrappaImage({'payload': raw_bytes, 'ext': 'jpg'})
 DSModel.predict expected to produce **WrappaObject** with **WrappaImage** set.
 You can init **WrappaImage** with image url by using this snippet:
 ```python
-wi = WrappaImage({'url': 'url_of_image'})
+wi = WrappaImage(url='url_of_image'})
 ```
 
 **file**
@@ -184,9 +184,9 @@ class DSModel:
         'something_else': 42
       } for x in data]
     return [WrappaObject(
-      WrappaImage({
-        'payload': 'bytes representation',
-        'ext': 'jpg'
+      WrappaImage(
+        payload='bytes representation',
+        ext='jpg'
       }),
       WrappaText('some **markdown** __text__')
     ) for x in data]

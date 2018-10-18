@@ -17,7 +17,7 @@ class DSModel:
 
         res = []
         for v in data:
-            img = WrappaImage.init_from_ndarray({
+            img = WrappaImage.init_from_ndarray(**{
                 'payload': v.image.as_ndarray,
                 'ext': v.image.ext
             })

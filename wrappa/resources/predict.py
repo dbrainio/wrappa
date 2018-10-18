@@ -60,7 +60,7 @@ class Predict(Resource):
             'image': WrappaImage,
             'file': WrappaFile
         }
-        return to_wrappa_type[key](data)
+        return to_wrappa_type[key](**data)
 
     @staticmethod
     def _parse_text(args):

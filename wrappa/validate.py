@@ -35,13 +35,13 @@ def main():
     for input_spec in spec['input']:
         if input_spec == 'image':
             default_image = np.array([[254] * 300] * 300, dtype=np.uint8)
-            wo.set_value(WrappaImage.init_from_ndarray({
+            wo.set_value(WrappaImage.init_from_ndarray(**{
                 'payload': default_image,
                 'ext': 'jpg'
             }))
         elif input_spec == 'file':
             default_bytes = bytes('a' * 1000, encoding='utf8')
-            wo.set_value(WrappaFile({
+            wo.set_value(WrappaFile(**{
                 'payload': default_bytes,
                 'ext': 'txt'
             }))
