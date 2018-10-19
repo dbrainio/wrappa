@@ -35,6 +35,35 @@ ds_model_config:
   config: {}
 ```
 
+### Legacy support
+To use DSModel suitable for wrappa 0.1.x add legacy decorator as follows:
+```python
+from wrappa import legacy_converter
+class DSModel:
+
+    def __init__(self, **kwargs):
+        pass
+
+    @legacy_converter
+    def predict(self, data, json):
+        if json:
+            return [[{
+                'text': 'Test1'
+            }, {
+                'text': 'Тест2'
+            }]]
+
+        res = [[
+            {
+                'image': v['image'],
+                'text': 'Test1',
+            }, {
+                'image': v['image'],
+                'text': 'Тест2',
+            }] for v in data]
+        return res
+```
+
 ## Supported specification
 All specification can be passed as mixins.
 
