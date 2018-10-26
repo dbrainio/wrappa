@@ -27,6 +27,12 @@ port: 8000
 consul:
   host: 127.0.0.1
   port: 8500
+# storage to save all inputs and outputs
+# can be ommited
+# for now only supports file storage
+storage:
+  files:
+    path: 'path/to/store'
 # section describing DSModel
 ds_model_config:
   # absolute (!) path to importable (!!!) package

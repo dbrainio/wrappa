@@ -34,6 +34,12 @@ class WrappaFile:
             'ext': self.ext
         }
 
+    def save_to_disk(self, fpath):
+        _fpath = fpath + '.' + self.ext
+        with open(_fpath, 'wb') as f:
+            f.write(self.payload)
+        return _fpath
+
     def _download_file(self):
         data = None
         if self.url is not None:

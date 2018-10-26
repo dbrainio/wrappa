@@ -25,6 +25,7 @@ class Predict(Resource):
         spec.loader.exec_module(ds_lib)
         # Init ds model
         cls._ds_model = ds_lib.DSModel(**cls._ds_model_config['config'])
+        cls._storage = kwargs.get('storage')
         return cls
 
     @staticmethod
@@ -245,11 +246,17 @@ class Predict(Resource):
                     f_kwargs['json'] = False
 
                 [res, *_] = self._ds_model.predict([data], **f_kwargs)
+                print('Storage in predict:', self._storage)
+            if self._storage is not None:
+                self._storage.add(data, res)
         except Exception as e:
             print(
                 f'DSModel failed to process data with exception\n{traceback.format_exc()}',
                 file=sys.stderr)
+            if self._storage is not None:
+                self._storage.add(data, str(e))
             abort(400, message='DS model failed to process data: ' + str(e))
+
         # Prepare and send response
         response = {
             'multipart/form-data': self._prepare_form_data_response,

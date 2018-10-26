@@ -22,7 +22,6 @@ def _parse_legacy_response(resp):
 
 def legacy_converter(f):
     def _f(self, data, json=False):
-        print(data, json)
         legacy_data = []
         for d in data:
             legacy_d = {}
