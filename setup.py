@@ -52,13 +52,15 @@ install_requires = [
     'requests-toolbelt>=0.8.0',
     'gunicorn>=19.7.1',
     'gevent>=0.13',
-    'pyyaml>=3.13'
+    'pyyaml>=3.13',
+    'numpy>=1.14.0',
+    'opencv-python>=3.4',
 ]
 
 CONFIG = {
     'name': 'wrappa',
     'url': '',
-    'version': '0.1.8',
+    'version': '0.2.1',
     'description': 'wrappa wraps ds app in http server',
     'author': 'seka17',
     'test_suite': 'wrappa',
@@ -66,6 +68,7 @@ CONFIG = {
     'entry_points': {
         'console_scripts': [
             'wrappa = wrappa.__main__:main',
+            'wrappa-validate = wrappa.validate:main'
         ],
     },
     'install_requires': install_requires,

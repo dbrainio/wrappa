@@ -2,4 +2,4 @@ from yaml import load
 
 
 def read_config(path):
-    return load(open(path, 'r'))
+    return load(open(path, 'r', encoding='utf-8'))

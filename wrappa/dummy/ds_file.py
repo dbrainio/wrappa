@@ -17,13 +17,9 @@ class DSModel:
 
         res = []
         for v in data:
-            img = WrappaImage.init_from_ndarray(**{
-                'payload': v.image.as_ndarray,
-                'ext': v.image.ext
-            })
             res.append([
-                WrappaObject(img, WrappaText('Test1')),
-                WrappaObject(v.image, WrappaText('Тест2'))
+                WrappaObject(v.file, WrappaText('Test1')),
+                WrappaObject(v.file, WrappaText('Тест2'))
             ])
 
         return res

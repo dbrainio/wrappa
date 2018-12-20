@@ -4,8 +4,11 @@
 ## Config
 ```yaml
 server_info:
-  # address where this service wil be available
+  # address where this service will be available
   address: "http://localhost:8000"
+  passphrase:
+    - "1234"
+    - "1235"
   # what DSModel expects as an input and what it produce
   specification:
     input:
@@ -20,75 +23,126 @@ server_info:
 # port where service will run
 port: 8000
 # connect to consul node
-# for debug it is optionable
+# for debug it is optional
 consul:
   host: 127.0.0.1
   port: 8500
+# storage to save all inputs and outputs
+# can be ommited
+# for now only supports file storage
+storage:
+  files:
+    path: 'path/to/store'
 # section describing DSModel
 ds_model_config:
   # absolute (!) path to importable (!!!) package
   model_path: 'path/to/DSModel'
-  # config which will be passed to DSModel contructor
+  # config which will be passed to DSModel constructor
   config: {}
+```
+
+### Legacy support
+To use DSModel suitable for wrappa 0.1.x add legacy decorator as follows:
+```python
+from wrappa import legacy_converter
+class DSModel:
+
+    def __init__(self, **kwargs):
+        pass
+
+    @legacy_converter
+    def predict(self, data, json):
+        if json:
+            return [[{
+                'text': 'Test1'
+            }, {
+                'text': 'Тест2'
+            }]]
+
+        res = [[
+            {
+                'image': v['image'],
+                'text': 'Test1',
+            }, {
+                'image': v['image'],
+                'text': 'Тест2',
+            }] for v in data]
+        return res
 ```
 
 ## Supported specification
 All specification can be passed as mixins.
 
 ### Input
+All inputs wrapped in **WrappaObject**, it has `image`, `file` and `text` properties, which returns corresponding wrappa objects to work with.
+
 **image**
 
-Array of bytes representation of an image will be passed to DSModel.predict
-```json
-{
-  "image": {
-    "payload": "bytes representation of image",
-    "ext": "jpg"
-  }
-}
-```
+Array of **WrappaImage** will be passed to DSModel.predict.
+**WrappaImage** class has `payload` and `ext` properties.
+If you need payload as ndarray call `as_ndarray` property.
+
+**file**
+
+Array of **WrappaFile** will be passed to DSModel.predict.
+**WrappaFile** class has `payload` and `ext` properties.
 
 **text**
-```json
-{
-  "text": "some text"
-}
-```
+Array of **WrappaText** will be passed to DSModel.predict.
+**WrappaText** class has `text` property.
 
 ### Output
+All outputs must be wrapped in **WrappaObject**.
+
+You can add objects as follows:
+```python
+wo = WrappaObject(
+  WrappaImage(payload= 'bytes_repr_of_an_image', ext='jpg'}),
+  WrappaText('some text'))
+# you can pass objects not only in init call
+wo.set_value(WrappaFile({payload='bytes_repr_of_a_file', ext='zip'}))
+```
+
 **image**
 
-Array of bytes representation of an image is expecting to be produced from DSModel.predict
-```json
-{
-  "image": {
-    "payload": "bytes representation of image",
-    "ext": "jpg"
-  }
-}
+DSModel.predict expected to produce **WrappaObject** with **WrappaImage** set.
+You can init **WrappaImage** with ndarray by using this snippet:
+```python
+img = np.array([[0]*300]*300, dtype=np.uint8)
+
+wi = WrappaImage.init_from_ndarray(payload=img, ext='jpg'})
+# or from raw bytes
+wi = WrappaImage({'payload': raw_bytes, 'ext': 'jpg'})
 ```
 
 **image_url**
 
-DSModel.predict produces following object:
-```json
-{
-  "image_url": "path/to/image"
-}
+DSModel.predict expected to produce **WrappaObject** with **WrappaImage** set.
+You can init **WrappaImage** with image url by using this snippet:
+```python
+wi = WrappaImage(url='url_of_image'})
 ```
+
+**file**
+
+Same as **image** but with **WrappaFile**.
+
+**file_url**
+
+Same as **image** but with **WrappaFile**.
 
 **text**
 
-DSModel.predict produces following object:
-```json
-{
-  "text": "some **markdown** __text__"
-}
+DSModel.predict expected to produce **WrappaObject** with **WrappaText** set.
+
+You can init **WrappaText** with your markdown text by using this snippet:
+```python
+wt = WrappaText('some **markdown** text')
 ```
 
 **list**
 
-DSModel.predict produces list of objects for each input.
+DSModel.predict expected to produce list of **WrappaObject** with needed properties set.
 
 For example, if you provide several outputs in config:
 ```yaml
@@ -97,11 +151,10 @@ output:
   - text
 ```
 then DSModel predict for each input should return following object:
-```json
-{
-  "image": "bytes representation of image",
-  "text": "some **markdown** __text__"
-}
+```python
+wi = WrappaImage(...)
+wt = WrappaText(...)
+out = WrappaObject(wi, wt)
 ```
 
 If you provide:
@@ -111,12 +164,13 @@ output:
   - text
   - list
 ```
-then you need to return following object:
-```json
-[{
-  "image_url": "path/to/image",
-  "text": "some **markdown** __text__"
-}]
+then you need to return following object for each input you get:
+```python
+wi1 = WrappaImage(...)
+wt1 = WrappaText(...)
+wi2 = WrappaImage(...)
+wt2 = WrappaText(...)
+out = [WrappaObject(wi1, wt1), WrappaObject(wi2, wt2)]
 ```
 
 **json**
@@ -151,6 +205,8 @@ It means [relative imports](https://docs.python.org/2.5/whatsnew/pep-328.html) a
 
 DSModel interface example:
 ```python
+from wrappa import WrappaObject, WrappaText, WrappaImage
+
 class DSModel:
   def __init__(self, **kwargs):
     pass
@@ -162,14 +218,13 @@ class DSModel:
         'value': 'sup?',
         'something_else': 42
       } for x in data]
-    return [{
-      'image': {
-        'payload': 'bytes representation',
-        'ext': 'jpg'
-      },
-      'text': 'some **markdown** __text__',
-      'image_url': 'path/to/image'
-    } for x in data]
+    return [WrappaObject(
+      WrappaImage(
+        payload='bytes representation',
+        ext='jpg'
+      }),
+      WrappaText('some **markdown** __text__')
+    ) for x in data]
 ```
 
 ## Server description
@@ -183,11 +238,19 @@ Content-Type: multipart/form-data
 
 **image**
 
-Name: `file` for raw data
+Name: `image` for raw data
 
 or
 
 Name: `image_url` for image url
+
+**file**
+
+Name: `file` for raw data
+
+or
+
+Name: `file_url` for image url
 
 **text**
 
@@ -208,7 +271,7 @@ It's simple.
 
 Installation: `python3 setup.py install`
 
-Or you can buid distribution wheel by running `make` in repository root. 
+Or you can build distribution wheel by running `make` in repository root.
 Your wheel will be stored in `dist` directory. You can install it by running `pip install wrappa-<version>-py3-none-any.whl`.
 
 If everything is fine, you'll be able to execute following command in your terminal:
@@ -222,3 +285,21 @@ To run server in dev mode:
 
 To run server without consul support:
 `wrappa --config './config.yml' --disable-consul`
+
+To validate your model against provided specs:
+`wrappa-validate --config './config_validate.yml'`
+
+Example of validation config:
+```yaml
+specification:
+  input:
+    - image
+  output:
+    - list
+    - image
+    - text
+    - json
+ds_model_config:
+  model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds.py'
+  config: {}
+```

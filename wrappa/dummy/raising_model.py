@@ -7,5 +7,4 @@ class DSModel:
         pass
 
     def predict(self, data, json):
-        # sleep(60)
         raise Exception('Failed as fuck!')
