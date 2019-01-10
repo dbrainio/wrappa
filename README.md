@@ -266,6 +266,26 @@ Pass passphrase in `Authorization` header like this `Authorization: Token your_p
 
 In order to get access to JSON version of api make sure that `json` included in output specification and provide following header `Access: application/json`.
 
+## Working with wrappa client
+
+You can use wrappa client to access wrappa server in a convenient way.
+When http code differs from 2xx error will be raised.
+```python
+from wrappa import Client, WrappaObject, WrappaImage
+
+
+cl = Client('http://localhost:8000', '123456')
+
+wo = WrappaObject(WrappaImage(
+    url='https://pbs.twimg.com/profile_images/54789364/JPG-logo-highres.jpg'))
+
+# Heathcheck example
+resp = cl.healthcheck()
+# Prediction is a WrappaObject or [WrappaObject]
+# Depends on provided specification
+resp = cl.predict(wo)
+```
+
 ## How to use
 It's simple.
 

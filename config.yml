@@ -8,10 +8,10 @@ server_info:
       - image
       # - text
     output:
-      - list
+      # - list
       - image
       - text
-      - json
+      # - json
   name: "test app"
   invitation_message: "send image"
 port: 8000
@@ -22,7 +22,7 @@ storage:
 #   host: 127.0.0.1
 #   port: 8500
 ds_model_config:
-  model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds.py'
+  model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds_one.py'
   # model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds_legacy.py'
   # model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/raising_model.py'
   config: {}

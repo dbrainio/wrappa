@@ -34,6 +34,7 @@ class WrappaFile:
             self._name = str(uuid4()) + '.' + self.ext
         return self._name
 
+    @property
     def url(self):
         return self._url
 
@@ -60,7 +61,7 @@ class WrappaFile:
         if self.url is not None:
             r = requests.get(self.url, stream=True)
             if r.status_code == 200:
-                with tempfile.TemporaryFile(mode='wb') as f:
+                with tempfile.TemporaryFile(mode='r+b') as f:
                     for chunk in r:
                         f.write(chunk)
                     f.seek(0)
