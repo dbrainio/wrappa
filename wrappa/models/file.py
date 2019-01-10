@@ -1,14 +1,16 @@
 import os
 import tempfile
+from uuid import uuid4
 
 import requests
 
 
 class WrappaFile:
-    def __init__(self, payload=None, ext=None, url=None):
+    def __init__(self, payload=None, ext=None, name=None, url=None):
         self._payload = payload
         self._ext = ext
         self._url = url
+        self._name = name
 
     @property
     def payload(self):
@@ -18,11 +20,19 @@ class WrappaFile:
 
     @property
     def ext(self):
-        if not self._ext and self._url is not None:
-            tmp = os.path.splitext(self._url)
-            if len(tmp) > 1:
-                self._ext = tmp[-1][1:]
+        if not self._ext:
+            to_ext = self._url or self._name
+            if to_ext is not None:
+                _, ext = os.path.splitext(self._url)
+                if ext:
+                    self._ext = ext[1:]
         return self._ext
+
+    @property
+    def name(self):
+        if self._name is None:
+            self._name = str(uuid4()) + '.' + self.ext
+        return self._name
 
     def url(self):
         return self._url
@@ -31,11 +41,16 @@ class WrappaFile:
     def as_dict(self):
         return {
             'payload': self.payload,
-            'ext': self.ext
+            'ext': self.ext,
+            'name': self.name
         }
 
     def save_to_disk(self, fpath):
-        _fpath = fpath + '.' + self.ext
+        _, ext = os.path.splitext(fpath)
+        if ext:
+            _fpath = fpath
+        else:
+            _fpath = fpath + '.' + self.ext
         with open(_fpath, 'wb') as f:
             f.write(self.payload)
         return _fpath

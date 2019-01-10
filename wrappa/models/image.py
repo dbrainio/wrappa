@@ -6,7 +6,7 @@ from .file import WrappaFile
 
 class WrappaImage(WrappaFile):
     @classmethod
-    def init_from_ndarray(cls, payload, ext):
+    def init_from_ndarray(cls, payload, ext, name=None):
         ext_to_store = ext
         ext_to_use = ext_to_store
         if ext_to_use[0] != '.':
@@ -17,7 +17,8 @@ class WrappaImage(WrappaFile):
         image_as_bytes = image.astype(np.uint8).tobytes()
         return WrappaImage(
             ext=ext_to_store,
-            payload=image_as_bytes
+            payload=image_as_bytes,
+            name=name
         )
 
     @property

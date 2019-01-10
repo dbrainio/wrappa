@@ -54,7 +54,8 @@ class Predict(Resource):
         if filename is not None and buf is not None:
             data = {
                 'payload': buf.getvalue(),
-                'ext': filename.split('.')[-1]
+                'ext': filename.split('.')[-1],
+                'name': filename
             }
 
         to_wrappa_type = {
@@ -134,6 +135,7 @@ class Predict(Resource):
             return fields
         ext = value['ext']
         payload = value['payload']
+        filename = value['name']
         payload_type = type(payload)
         if not isinstance(payload, bytes):
             raise TypeError(
@@ -145,17 +147,17 @@ class Predict(Resource):
         if index is not None:
             if key == 'image':
                 fields[f'{key}-{index}'] = (
-                    f'filename.{ext}', buf, f'image/{ext}')
+                    filename, buf, f'image/{ext}')
             else:
                 fields[f'{key}-{index}'] = (
-                    f'filename.{ext}', buf, 'applications/octet-stream')
+                    filename, buf, 'applications/octet-stream')
         else:
             if key == 'image':
                 fields[key] = (
-                    f'filename.{ext}', buf, f'image/{ext}')
+                    filename, buf, f'image/{ext}')
             else:
                 fields[key] = (
-                    f'filename.{ext}', buf, 'applications/octet-stream')
+                    filename, buf, 'applications/octet-stream')
         return fields
 
     @staticmethod

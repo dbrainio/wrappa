@@ -79,13 +79,13 @@ All inputs wrapped in **WrappaObject**, it has `image`, `file` and `text` proper
 **image**
 
 Array of **WrappaImage** will be passed to DSModel.predict.
-**WrappaImage** class has `payload` and `ext` properties.
+**WrappaImage** class has `payload`, `name` and `ext` properties.
 If you need payload as ndarray call `as_ndarray` property.
 
 **file**
 
 Array of **WrappaFile** will be passed to DSModel.predict.
-**WrappaFile** class has `payload` and `ext` properties.
+**WrappaFile** class has `payload`, `name` and `ext` properties.
 
 **text**
 Array of **WrappaText** will be passed to DSModel.predict.
@@ -97,7 +97,7 @@ All outputs must be wrapped in **WrappaObject**.
 You can add objects as follows:
 ```python
 wo = WrappaObject(
-  WrappaImage(payload= 'bytes_repr_of_an_image', ext='jpg'}),
+  WrappaImage(payload= 'bytes_repr_of_an_image', ext='jpg', name='tmp'}),
   WrappaText('some text'))
 # you can pass objects not only in init call
 wo.set_value(WrappaFile({payload='bytes_repr_of_a_file', ext='zip'}))
