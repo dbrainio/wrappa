@@ -23,7 +23,7 @@ class WrappaFile:
         if not self._ext:
             to_ext = self._url or self._name
             if to_ext is not None:
-                _, ext = os.path.splitext(self._url)
+                _, ext = os.path.splitext(to_ext)
                 if ext:
                     self._ext = ext[1:]
         return self._ext
