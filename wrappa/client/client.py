@@ -53,7 +53,7 @@ class Client:
             tmp = cd.split(b';')
             field_name = tmp[1].split(b'=')[-1][1:-1]
             filename = None
-            if len(tmp) > 3:
+            if len(tmp) >= 3:
                 filename = tmp[2].split(b'=')[-1][1:-1]
 
             if b'-' in field_name:
