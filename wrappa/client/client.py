@@ -21,7 +21,7 @@ class Client:
             fields['image'] = (
                 data.image.name,
                 io.BytesIO(data.image.payload),
-                f'image/{data.image.ext}',
+                'image/{}'.format(data.image.ext),
             )
         if data.file is not None:
             fields['file'] = (

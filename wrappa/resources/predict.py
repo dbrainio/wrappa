@@ -38,8 +38,8 @@ class Predict(Resource):
             f.save(buf)
             f.close()
             filename = f.filename
-        if args.get(f'{key}_url') is not None:
-            obj_url = args[f'{key}_url']
+        if args.get('{}_url'.format(key)) is not None:
+            obj_url = args['{key}_url'.format(key)]
             # Download file
             r = requests.get(obj_url)
             buf = io.BytesIO()
@@ -139,22 +139,24 @@ class Predict(Resource):
         payload_type = type(payload)
         if not isinstance(payload, bytes):
             raise TypeError(
-                f'Expecting type bytes for image.payload, got {payload_type}')
+                'Expecting type bytes for image.payload, got {payload_type}'.format(
+                    payload_type=payload_type))
         if not ext or not isinstance(ext, str):
             raise TypeError(
-                f'Wrong extension, expecting jpg, png or gif, got {ext}')
+                'Wrong extension, expecting jpg, png or gif, got {ext}'.format(
+                    ext=ext))
         buf = io.BytesIO(payload)
         if index is not None:
             if key == 'image':
-                fields[f'{key}-{index}'] = (
-                    filename, buf, f'image/{ext}')
+                fields['{key}-{index}'.format(key=key, index=index)] = (
+                    filename, buf, 'image/{ext}'.format(ext=ext))
             else:
-                fields[f'{key}-{index}'] = (
+                fields['{key}-{index}'.format(key=key, index=index)] = (
                     filename, buf, 'applications/octet-stream')
         else:
             if key == 'image':
                 fields[key] = (
-                    filename, buf, f'image/{ext}')
+                    filename, buf, 'image/{ext}'.format(ext=ext))
             else:
                 fields[key] = (
                     filename, buf, 'applications/octet-stream')
@@ -167,9 +169,11 @@ class Predict(Resource):
         value_type = type(value)
         if not isinstance(value, str):
             raise TypeError(
-                f'Expecting type str for {value}, got {value_type}')
+                'Expecting type str for {value}, got {value_type}'.format(
+                    value=value, value_type=value_type
+                ))
         if index is not None:
-            fields[f'{key}-{index}'] = value
+            fields['{key}-{index}'.format(key=key, index=index)] = value
         else:
             fields[key] = value
         return fields
@@ -226,7 +230,9 @@ class Predict(Resource):
             data = self._parse_request()
         except Exception as e:
             print(
-                f'Failed to parse request with exception\n{traceback.format_exc()}',
+                'Failed to parse request with exception\n{exception}'.format(
+                    exception=traceback.format_exc()
+                ),
                 file=sys.stderr)
             abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
@@ -253,7 +259,9 @@ class Predict(Resource):
                 self._storage.add(data, res)
         except Exception as e:
             print(
-                f'DSModel failed to process data with exception\n{traceback.format_exc()}',
+                'Failed to parse request with exception\n{exception}'.format(
+                    exception=traceback.format_exc()
+                ),
                 file=sys.stderr)
             if self._storage is not None:
                 self._storage.add(data, str(e))

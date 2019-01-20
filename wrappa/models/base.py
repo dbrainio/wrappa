@@ -20,7 +20,7 @@ class WrappaObject:
         elif isinstance(data, WrappaText) and self._text is None:
             self._text = data
         else:
-            raise TypeError(f'Not supported type: {type(data)}')
+            raise TypeError('Not supported type: {t}'.format(t=type(data)))
         return data
 
     @property

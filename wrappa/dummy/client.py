@@ -10,3 +10,5 @@ resp = cl.healthcheck()
 resp = cl.predict(wo)
 
 print('Response:', resp)
+
+resp.image.save_to_disk('./tmp.jpg')

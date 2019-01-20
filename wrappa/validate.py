@@ -13,13 +13,19 @@ def validate_output_spec(spec, v):
             and (not isinstance(v.image, WrappaImage) or
                  v.image is None or v.image.ext is None or '.' in v.image.ext):
         raise TypeError(
-            f'Image provided in output spec, but result of prediction is type of {type(v.image)}')
+            'Image provided in output spec, but result of prediction is type of {t}'.format(
+                t=type(v.image)
+            ))
     if 'text' in spec['output'] and (not isinstance(v.text, WrappaText) or v.text.text is None):
         raise TypeError(
-            f'Text provided in output spec, but result of prediction is type of {type(v.text)}')
+            'Text provided in output spec, but result of prediction is type of {t}'.format(
+                t=type(v.text)
+            ))
     if 'file' in spec['output'] and (not isinstance(v.file, WrappaFile) or v.file.payload is None):
         raise TypeError(
-            f'File provided in output spec, but result of prediction is type of {type(v.file)}')
+            'File provided in output spec, but result of prediction is type of {t}'.format(
+                type(v.file)
+            ))
 
 
 def main():
@@ -69,7 +75,9 @@ def main():
     if 'list' in spec['output']:
         if not isinstance(res, list):
             raise TypeError(
-                f'List provided in output spec, but result of prediction is type of {type(res)}')
+                'List provided in output spec, but result of prediction is type of {t}'.format(
+                    t=type(res)
+                ))
         for v in res:
             validate_output_spec(spec, v)
     else:

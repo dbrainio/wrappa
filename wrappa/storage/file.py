@@ -23,12 +23,12 @@ class FileStorage:
         def _handle_wo(storagepath, prefix, wo, t, counter=None):
             data = {}
             suffix = str(counter) + '_' if counter is not None else ''
-            if wo.image:
+            if wo.image and wo.image.payload:
                 imgpath = os.path.join(
                     storagepath, prefix + '_image_' + suffix + t)
                 imgpath = wo.image.save_to_disk(imgpath)
                 data['image'] = imgpath.replace(storagepath + '/', '')
-            if wo.file:
+            if wo.file and wo.file.payload:
                 fpath = os.path.join(
                     storagepath, prefix + '_file_' + suffix + t)
                 fpath = wo.image.save_to_disk(fpath)

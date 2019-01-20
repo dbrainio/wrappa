@@ -50,17 +50,15 @@ install_requires = [
     'python-consul>=1.0.1',
     'requests>=2.13.0',
     'requests-toolbelt>=0.8.0',
-    'gunicorn>=19.7.1',
-    'gevent>=0.13',
     'pyyaml>=3.13',
     'numpy>=1.14.0',
-    'opencv-python>=3.4',
+    'Pillow>=5.0.0'
 ]
 
 CONFIG = {
     'name': 'wrappa',
     'url': '',
-    'version': '0.2.3',
+    'version': '0.2.5',
     'description': 'wrappa wraps ds app in http server',
     'author': 'seka17',
     'test_suite': 'wrappa',

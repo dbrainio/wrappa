@@ -1,20 +1,23 @@
-import numpy as np
-import cv2
+import io
+
+from PIL import Image
 
 from .file import WrappaFile
 
 
 class WrappaImage(WrappaFile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._img_as_ndarray = None
+
     @classmethod
     def init_from_ndarray(cls, payload, ext, name=None):
         ext_to_store = ext
-        ext_to_use = ext_to_store
-        if ext_to_use[0] != '.':
-            ext_to_use = '.' + ext_to_use
         if ext_to_store[0] == '.':
             ext_to_store = ext_to_store[1:]
-        _, image = cv2.imencode(ext_to_use, payload)
-        image_as_bytes = image.astype(np.uint8).tobytes()
+
+        image = Image.fromarray(payload)
+        image_as_bytes = image.tobytes()
         return WrappaImage(
             ext=ext_to_store,
             payload=image_as_bytes,
@@ -23,6 +26,7 @@ class WrappaImage(WrappaFile):
 
     @property
     def as_ndarray(self):
-        image = np.fromstring(self.payload, dtype=np.uint8)
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        return image
+        if self._img_as_ndarray is None:
+            self._img_as_ndarray = Image.open(io.BytesIO(self.payload))
+
+        return self._img_as_ndarray
