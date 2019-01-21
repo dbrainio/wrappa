@@ -247,14 +247,13 @@ class Predict(Resource):
             if 'json' in self._server_info['specification']['output']:
                 is_json = response_type == 'application/json'
                 [res, *_] = self._ds_model.predict([data],
-                                                   json=is_json)
+                                                   as_json=is_json)
             else:
                 f_kwargs = {}
-                if 'json' in self._ds_model.predict.__code__.co_varnames:
-                    f_kwargs['json'] = False
+                if 'as_json' in self._ds_model.predict.__code__.co_varnames:
+                    f_kwargs['as_json'] = False
 
                 [res, *_] = self._ds_model.predict([data], **f_kwargs)
-                print('Storage in predict:', self._storage)
             if self._storage is not None:
                 self._storage.add(data, res)
         except Exception as e:

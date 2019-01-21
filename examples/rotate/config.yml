@@ -1,0 +1,15 @@
+server_info:
+  address: "http://127.0.0.1:8000"
+  passphrase:
+    - "123456"
+  specification:
+    input:
+      - image
+    output:
+      - image
+  name: "Rotate service"
+  invitation_message: "Send image"
+port: 8000
+ds_model_config:
+  model_path: 'examples/rotate/rotate.py'
+  config: {}

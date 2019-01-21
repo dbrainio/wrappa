@@ -14,7 +14,7 @@ class Client:
         self._address: str = address
         self._passphrase: str = passphrase
 
-    def predict(self, data: WrappaObject):
+    def predict(self, data: WrappaObject, as_json: bool=False):
         fields = {}
 
         if data.image is not None:
@@ -33,17 +33,26 @@ class Client:
             fields['text'] = data.text.text
 
         me = MultipartEncoder(fields=fields)
+        headers = {
+            'Authorization': 'Token ' + self._passphrase,
+            'Content-Type': me.content_type,
+        }
+
+        if as_json:
+            headers['Accept'] = 'application/json'
+        else:
+            headers['Accept'] = 'multipart/form-data'
+
         response = requests.post(
             os.path.join(self._address, 'predict'),
-            headers={
-                'Authorization': 'Token ' + self._passphrase,
-                'Accept': 'multipart/form-data',
-                'Content-Type': me.content_type,
-            },
+            headers=headers,
             data=me,
         )
 
         response.raise_for_status()
+
+        if as_json:
+            return response.json()
 
         md = MultipartDecoder.from_response(response)
 

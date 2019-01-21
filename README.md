@@ -1,5 +1,80 @@
 ## Description
-**wrappa** is a util to wrap any interface implementing DSModel in a http server.
+**wrappa** is a util to wrap any interface implementing DSModel in a http server. Python3.5+
+
+## Example
+Simple service which rotates provided image.
+```python
+import numpy as np
+
+from wrappa import WrappaObject, WrappaImage
+
+class DSModel:
+
+    def __init__(self, **kwargs):
+        pass
+
+    def predict(self, data, **kwargs):
+        _ = kwargs
+        # Data is always an array of WrappaObject
+        responses = []
+        for obj in data:
+            img = obj.image.as_ndarray
+            rotated_img = np.rot90(img)
+            resp = WrappaObject(WrappaImage.init_from_ndarray(
+                payload=rotated_img,
+                ext=obj.image.ext,
+            ))
+            responses.append(resp)
+        return responses
+```
+
+To launch server simply run `wrappa --config examples/rotate/config.yml --disable-consul`.
+In order to send request to created server use curl
+```
+curl -X "POST" "http://localhost:8000/predict" \
+     -H 'Authorization: Token 123456' \
+     -H 'Content-Type: multipart/form-data; charset=utf-8; boundary=__smth__' \
+     -H 'Accept: multipart/form-data' \
+     -F "image=@path_to_img.jpg"
+```
+or run client example `python examples/rotate/rotate_client.py`.
+
+## How to use
+It's simple.
+
+Installation: `pip install wrappa`.
+
+Or clone repo and execute `python3 setup.py install`.
+
+Or you can build distribution wheel by running `make` in repository root.
+Your wheel will be stored in `dist` directory. You can install it by running `pip install wrappa-<version>-py3-none-any.whl`.
+
+If everything is fine, you'll be able to execute following command in your terminal:
+`wrappa --help`
+
+To run server:
+`wrappa --config './config.yml'`
+
+To run server in dev mode:
+`wrappa --config './config.yml' --debug`
+
+To run server without consul support:
+`wrappa --config './config.yml' --disable-consul`
+
+To validate your model against provided specs:
+`wrappa-validate --config './config_validate.yml'`
+
+Example of validation config:
+```yaml
+specification:
+  input:
+    - image
+  output:
+    - image
+ds_model_config:
+  model_path: 'examples/rotate/rotate.py'
+  config: {}
+```
 
 ## Config
 ```yaml
@@ -39,35 +114,6 @@ ds_model_config:
   model_path: 'path/to/DSModel'
   # config which will be passed to DSModel constructor
   config: {}
-```
-
-### Legacy support
-To use DSModel suitable for wrappa 0.1.x add legacy decorator as follows:
-```python
-from wrappa import legacy_converter
-class DSModel:
-
-    def __init__(self, **kwargs):
-        pass
-
-    @legacy_converter
-    def predict(self, data, json):
-        if json:
-            return [[{
-                'text': 'Test1'
-            }, {
-                'text': 'Тест2'
-            }]]
-
-        res = [[
-            {
-                'image': v['image'],
-                'text': 'Test1',
-            }, {
-                'image': v['image'],
-                'text': 'Тест2',
-            }] for v in data]
-        return res
 ```
 
 ## Supported specification
@@ -176,7 +222,7 @@ out = [WrappaObject(wi1, wt1), WrappaObject(wi2, wt2)]
 **json**
 
 This one is tricky. If you need to create JSON api, provide this key. It means,
-that you need to take additional argument in predict model `json`. If it's true,
+that you need to take additional argument in predict model `as_json`. If it's true,
 return valid JSON, if false, return values appropriate for your output specification.
 You can return anything you like ignoring any other specification.
 
@@ -211,8 +257,8 @@ class DSModel:
   def __init__(self, **kwargs):
     pass
 
-  def predict(self, data, json=False):
-    if json:
+  def predict(self, data, as_json=False):
+    if as_json:
       return [{
         'text': 'hello',
         'value': 'sup?',
@@ -264,7 +310,7 @@ Server returns multipart/form-data or application/json if `json` field provided 
 If you provide passphrase it will be required to get access to your service.
 Pass passphrase in `Authorization` header like this `Authorization: Token your_passphrase`.
 
-In order to get access to JSON version of api make sure that `json` included in output specification and provide following header `Access: application/json`.
+In order to get access to JSON version of api make sure that `json` included in output specification and provide following header `Accept: application/json`.
 
 ## Working with wrappa client
 
@@ -286,40 +332,32 @@ resp = cl.healthcheck()
 resp = cl.predict(wo)
 ```
 
-## How to use
-It's simple.
 
-Installation: `python3 setup.py install`
+### Legacy support
+To use DSModel suitable for wrappa 0.1.x add legacy decorator as follows:
+```python
+from wrappa import legacy_converter
+class DSModel:
 
-Or you can build distribution wheel by running `make` in repository root.
-Your wheel will be stored in `dist` directory. You can install it by running `pip install wrappa-<version>-py3-none-any.whl`.
+    def __init__(self, **kwargs):
+        pass
 
-If everything is fine, you'll be able to execute following command in your terminal:
-`wrappa --help`
+    @legacy_converter
+    def predict(self, data, json):
+        if json:
+            return [[{
+                'text': 'Test1'
+            }, {
+                'text': 'Тест2'
+            }]]
 
-To run server:
-`wrappa --config './config.yml'`
-
-To run server in dev mode:
-`wrappa --config './config.yml' --debug`
-
-To run server without consul support:
-`wrappa --config './config.yml' --disable-consul`
-
-To validate your model against provided specs:
-`wrappa-validate --config './config_validate.yml'`
-
-Example of validation config:
-```yaml
-specification:
-  input:
-    - image
-  output:
-    - list
-    - image
-    - text
-    - json
-ds_model_config:
-  model_path: '/Users/sergey/work/dbrain/programming/wrappa/wrappa/dummy/ds.py'
-  config: {}
+        res = [[
+            {
+                'image': v['image'],
+                'text': 'Test1',
+            }, {
+                'image': v['image'],
+                'text': 'Тест2',
+            }] for v in data]
+        return res
 ```
