@@ -70,4 +70,5 @@ class App:
         return self._app
 
     def start(self):
-        self._app.run(host='0.0.0.0', port=self._port, debug=self._debug)
+        self._app.run(host='0.0.0.0', port=self._port,
+                      debug=self._debug, use_reloader=False)
