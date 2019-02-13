@@ -67,7 +67,7 @@ class Client:
 
             if b'-' in field_name:
                 obj_type, ind = field_name.split(b'-')
-                ind = str.join('', filter(lambda x: x.isdigit(), ind))
+                ind = int(ind)
             else:
                 obj_type, ind = field_name, None
 
