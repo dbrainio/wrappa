@@ -1,4 +1,3 @@
-# from flask_restful import Resource
 from aiohttp import web
 
 

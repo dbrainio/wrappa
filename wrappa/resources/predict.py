@@ -4,12 +4,7 @@ import sys
 import traceback
 import asyncio
 
-# from flask_restful import abort, reqparse, Resource
-# from flask import make_response
-from requests_toolbelt import MultipartEncoder
-# import werkzeug
-import requests
-from aiohttp import web, MultipartWriter
+from aiohttp import web, MultipartWriter, ClientSession
 
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 from ..common import abort
@@ -29,29 +24,26 @@ class Predict:
         self._storage = kwargs.get('storage')
 
     @staticmethod
-    def _parse_file_object(args, key):
+    async def _parse_file_object(args, key):
         filename, buf = None, None
         data = None
         if args.get(key) is not None:
             f = args[key].file
-            # print(dir(f))
             buf = io.BytesIO()
             buf.write(f.read())
             buf.flush()
-
-            # buf = io.BytesIO()
-            # f.save(buf)
             f.close()
             filename = args[key].filename
         if args.get('{}_url'.format(key)) is not None:
             obj_url = args['{key}_url'.format(key=key)]
             # Download file
-            # TODO: async call
-            r = requests.get(obj_url)
-            buf = io.BytesIO()
-            buf.write(r.content)
-            buf.flush()
-
+            with ClientSession() as session:
+                async with session.get(obj_url) as resp:
+                    data = await resp.content()
+                    buf = io.BytesIO()
+                    buf.write(data)
+                    buf.flush()
+        
             tmp = obj_url.split('/')[-1].split('?')
             if len(tmp) <= 1:
                 filename = ''.join(tmp)
@@ -92,13 +84,13 @@ class Predict:
 
     async def _parse_request(self, request):
         data = await request.post()
-       
+  
         input_spec = self._server_info['specification']['input']
         resp = WrappaObject()
         if 'image' in input_spec:
-            resp.set_value(self._parse_file_object(data, 'image'))
+            resp.set_value(await self._parse_file_object(data, 'image'))
         if 'file' in input_spec:
-            resp.set_value(self._parse_file_object(data, 'file'))
+            resp.set_value(await self._parse_file_object(data, 'file'))
         if 'text' in input_spec:
             resp.set_value(self._parse_text(data))
         return resp
@@ -123,7 +115,6 @@ class Predict:
 
     @staticmethod
     def _add_fields_file_object_value(fields, value, key, index=None):
-        # v = value.get(key)
         if value is None:
             return fields
         ext = value['ext']
@@ -208,40 +199,34 @@ class Predict:
                 fields = self._add_fields_text_value(
                     fields, getattr(data, 'text').text, 'text')
 
-        # me = MultipartEncoder(fields=fields)
-        # File: (filename, buf, 'image/{ext}'.format(ext=ext))
-        # Text: text
-        response = web.StreamResponse(
-            status=200,
-            reason='OK',
-            headers={
-                'Content-Type': 'multipart/form-data',
-            },
-        )
-        await response.prepare(request)
         final = len(fields)
         with MultipartWriter('form-data') as mpwriter:
+            response = web.StreamResponse(
+                status=200,
+                headers={
+                    'Content-Type': 'multipart/form-data;boundary={}'.format(mpwriter.boundary),
+                }   
+            )
+            await response.prepare(request)
             ind = 0
             for k, value in fields.items():
                 ind += 1
                 if isinstance(value, tuple):
                     mpwriter.append(value[1], {
-                        'Content-Disposition': 'form-data',
+                        'Content-Disposition': 'form-data; name="{name}"; filename="{filename}"'.format(
+                            name=k, filename=value[0]
+                        ),
                         'Content-Type': value[2],
-                        'name': k,
-                        'filename': value[0],
                     })
                 else:
                     mpwriter.append(value, {
-                        'Content-Disposition': 'form-data',
-                        'name': k,
+                        'Content-Disposition': 'form-data; name="{name}"'.format(
+                            name=k
+                        ),
                     })
                 close_boundary = final == ind
                 await mpwriter.write(response, close_boundary=close_boundary)
-        # await response.drain()
-        
-        # resp = make_response(me.to_string())
-        # resp.mimetype = me.content_type
+        await response.drain()
         return response
 
     async def post(self, request):
