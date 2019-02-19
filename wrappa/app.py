@@ -7,7 +7,7 @@ import consul
 from .resources import Healthcheck, Predict
 
 class App:
-    def __init__(self, debug=False, disable_consul=False, timeout=None, **kwargs):
+    def __init__(self, debug=False, disable_consul=False, **kwargs):
 
         # Parse kwargs
         self._port = kwargs['port']

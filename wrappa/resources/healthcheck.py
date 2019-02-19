@@ -7,5 +7,5 @@ class Healthcheck:
         pass
 
     @staticmethod
-    async def get(request):
+    async def get(_request):
         return web.Response(body=None, status=204)

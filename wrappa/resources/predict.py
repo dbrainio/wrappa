@@ -199,18 +199,15 @@ class Predict:
                 fields = self._add_fields_text_value(
                     fields, getattr(data, 'text').text, 'text')
 
-        final = len(fields)
         with MultipartWriter('form-data') as mpwriter:
             response = web.StreamResponse(
                 status=200,
                 headers={
                     'Content-Type': 'multipart/form-data;boundary={}'.format(mpwriter.boundary),
-                }   
+                }
             )
             await response.prepare(request)
-            ind = 0
             for k, value in fields.items():
-                ind += 1
                 if isinstance(value, tuple):
                     mpwriter.append(value[1], {
                         'Content-Disposition': 'form-data; name="{name}"; filename="{filename}"'.format(
@@ -224,9 +221,7 @@ class Predict:
                             name=k
                         ),
                     })
-                close_boundary = final == ind
-                await mpwriter.write(response, close_boundary=close_boundary)
-        await response.drain()
+            await mpwriter.write(response)
         return response
 
     async def post(self, request):
