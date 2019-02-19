@@ -3,25 +3,101 @@ import io
 import sys
 import traceback
 import asyncio
+import time
 
 from aiohttp import web, MultipartWriter, ClientSession
 
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 from ..common import abort
 
-class Predict:
+class Predictor:
+    @classmethod
+    async def create(cls, config):
+        self = Predictor(config)
+        self._queue = asyncio.Queue()
+        asyncio.ensure_future(self.start_pooling())
+        return self
 
-    def __init__(self, **kwargs):
-        self._ds_model_config = kwargs['ds_model_config']
-        self._server_info = kwargs['server_info']
+    def __init__(self, config):
         # Dynamically import package
         spec = importlib.util.spec_from_file_location(
-            'DSModel', self._ds_model_config['model_path'])
+            'DSModel', config['model_path'])
         ds_lib = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ds_lib)
         # Init ds model
-        self._ds_model = ds_lib.DSModel(**self._ds_model_config['config'])
+        self._ds_model = ds_lib.DSModel(**config['config'])
+
+    async def start_pooling(self):
+        requests_with_json = []
+        requests_without_json = []
+        while True:
+            try:
+                # print('Pooling :: Waiting from queue')
+                request = self._queue.get_nowait()
+                # print('Pooling :: Got value from queue ::', request)
+                if request[-1]:
+                    requests_with_json.append(request[:-1])
+                else:
+                    requests_without_json.append(request[:-1])
+            except asyncio.QueueEmpty:
+                # print('Pooling :: Exception from queue')
+                await asyncio.sleep(0.05)
+                # print(requests_with_json, requests_without_json)
+                # Execute task
+                res1, res2 = [], []
+                if requests_with_json:
+                    res1 = await self._predict([x[1] for x in requests_with_json], True)
+
+                if requests_without_json:
+                    res2 = await self._predict([x[1] for x in requests_without_json], False)
+                
+                # print(res1, res2)
+                if res1 is not None:
+                    for res, (queue, _) in zip(res1, requests_with_json):
+                        # print('Pooling :: in res1', queue)
+                        queue.put_nowait(res)
+                
+                if res2 is not None:
+                    for res, (queue, _) in zip(res2, requests_without_json):
+                        # print('Pooling :: in res2', queue)
+                        queue.put_nowait(res)
+
+                requests_with_json = []
+                requests_without_json = []
+
+    async def _predict(self, data, is_json):
+        f_kwargs = {}
+        if 'as_json' in self._ds_model.predict.__code__.co_varnames:
+            f_kwargs['as_json'] = is_json or False
+        
+        if asyncio.iscoroutinefunction(self._ds_model.predict):
+            res = await self._ds_model.predict(data, **f_kwargs)
+        else:
+            res = self._ds_model.predict(data, **f_kwargs)
+        
+        return res
+    
+    async def predict(self, data, is_json):
+        queue = asyncio.Queue(maxsize=1)
+        # print('Putting in queue')
+        self._queue.put_nowait((queue, data, is_json))
+        # print('Waiting from queue')
+        resp = await queue.get()
+        # print('Got from queue')
+        return resp
+
+class Predict:
+
+    def __init__(self, **kwargs):
+        self._server_info = kwargs['server_info']
+        self._predictor = Predictor.create(kwargs['ds_model_config'])
         self._storage = kwargs.get('storage')
+        self._is_inited = False
+
+    async def _init(self):
+        if not self._is_inited:
+            self._predictor = await self._predictor
+            self._is_inited = True
 
     @staticmethod
     async def _parse_file_object(args, key):
@@ -225,6 +301,7 @@ class Predict:
         return response
 
     async def post(self, request):
+        await self._init()
         # Check authorization
         if not self._check_auth(request):
             return abort(401, message='Unauthorized')
@@ -251,25 +328,12 @@ class Predict:
         try:
             # Predict should accept array of objects
             # For now just create array of a single object
+            is_json = False
             if 'json' in self._server_info['specification']['output']:
                 is_json = response_type == 'application/json'
-                if asyncio.iscoroutinefunction(self._ds_model.predict):
-                    tmp = await self._ds_model.predict([data],
-                                                    as_json=is_json)
-                    [res, *_] = tmp
-                else:
-                    [res, *_] = self._ds_model.predict([data],
-                                                    as_json=is_json)
-            else:
-                f_kwargs = {}
-                if 'as_json' in self._ds_model.predict.__code__.co_varnames:
-                    f_kwargs['as_json'] = False
 
-                if asyncio.iscoroutinefunction(self._ds_model.predict):
-                    tmp = await self._ds_model.predict([data], **f_kwargs)
-                    [res, *_] = tmp
-                else:
-                    [res, *_] = self._ds_model.predict([data], **f_kwargs)
+            res = await self._predictor.predict(data, is_json)
+            
             if self._storage is not None:
                 self._storage.add(data, res)
         except Exception as e:
