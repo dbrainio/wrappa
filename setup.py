@@ -45,8 +45,9 @@ class PylintCommand(distutils.cmd.Command):
 
 
 install_requires = [
-    'Flask-RESTful>=0.3.6',
-    'Flask>=1.0.2',
+    # 'Flask-RESTful>=0.3.6',
+    # 'Flask>=1.0.2',
+    'aiohttp>=3.4.4'
     'python-consul>=1.0.1',
     'requests>=2.13.0',
     'requests-toolbelt>=0.8.0',
@@ -58,7 +59,7 @@ install_requires = [
 CONFIG = {
     'name': 'wrappa',
     'url': '',
-    'version': '0.3.2',
+    'version': '0.4.0',
     'description': 'wrappa wraps ds app in http server',
     'author': 'seka17',
     'test_suite': 'wrappa',

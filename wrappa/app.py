@@ -1,18 +1,21 @@
 import json
+# import asyncio
 
-from flask import Flask
-from flask_restful import Api
+from aiohttp import web
+# from flask import Flask
+# from flask_restful import Api
 import consul
+
 
 from .resources import Healthcheck, Predict
 
 
-class UnicodeApi(Api):
-    def __init__(self, *args, **kwargs):
-        super(UnicodeApi, self).__init__(*args, **kwargs)
-        self.app.config['RESTFUL_JSON'] = {
-            'ensure_ascii': False
-        }
+# class UnicodeApi(Api):
+#     def __init__(self, *args, **kwargs):
+#         super(UnicodeApi, self).__init__(*args, **kwargs)
+#         self.app.config['RESTFUL_JSON'] = {
+#             'ensure_ascii': False
+#         }
 
 
 class App:
@@ -31,15 +34,22 @@ class App:
                 else:
                     print('[Warning] Missing consul config')
 
-        app = Flask(__name__)
-        if timeout is not None:
-            app.config.update(PERMANENT_SESSION_LIFETIME=timeout)
-        api = UnicodeApi(app)
+        app = web.Application()
+        # app = Flask(__name__)
+        # if timeout is not None:
+        #     app.config.update(PERMANENT_SESSION_LIFETIME=timeout)
+        # api = UnicodeApi(app)
 
-        api.add_resource(Healthcheck, '/healthcheck')
-        api.add_resource(Predict.setup(**kwargs), '/predict')
+        healthchecker = Healthcheck()
+        predictor = Predict(**kwargs)
 
-        self._api = api
+        app.add_routes([web.get('/healthcheck', healthchecker.get)])
+        app.add_routes([web.post('/predict', predictor.post)])
+
+        # api.add_resource(Healthcheck, '/healthcheck')
+        # api.add_resource(, '/predict')
+
+        # self._api = api
         self._app = app
 
     @staticmethod
@@ -70,5 +80,6 @@ class App:
         return self._app
 
     def start(self):
-        self._app.run(host='0.0.0.0', port=self._port,
-                      debug=self._debug, use_reloader=False)
+        web.run_app(self.app, host='0.0.0.0', port=self._port)
+        # self._app.run(host='0.0.0.0', port=self._port,
+        #               debug=self._debug, use_reloader=False)

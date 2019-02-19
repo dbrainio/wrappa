@@ -2,45 +2,51 @@ import importlib.util
 import io
 import sys
 import traceback
+import asyncio
 
-from flask_restful import abort, reqparse, Resource
-from flask import make_response
+# from flask_restful import abort, reqparse, Resource
+# from flask import make_response
 from requests_toolbelt import MultipartEncoder
-import werkzeug
+# import werkzeug
 import requests
+from aiohttp import web, MultipartWriter
 
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
+from ..common import abort
 
+class Predict:
 
-class Predict(Resource):
-
-    @classmethod
-    def setup(cls, **kwargs):
-        cls._ds_model_config = kwargs['ds_model_config']
-        cls._server_info = kwargs['server_info']
+    def __init__(self, **kwargs):
+        self._ds_model_config = kwargs['ds_model_config']
+        self._server_info = kwargs['server_info']
         # Dynamically import package
         spec = importlib.util.spec_from_file_location(
-            'DSModel', cls._ds_model_config['model_path'])
+            'DSModel', self._ds_model_config['model_path'])
         ds_lib = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ds_lib)
         # Init ds model
-        cls._ds_model = ds_lib.DSModel(**cls._ds_model_config['config'])
-        cls._storage = kwargs.get('storage')
-        return cls
+        self._ds_model = ds_lib.DSModel(**self._ds_model_config['config'])
+        self._storage = kwargs.get('storage')
 
     @staticmethod
     def _parse_file_object(args, key):
         filename, buf = None, None
         data = None
         if args.get(key) is not None:
-            f = args[key]
+            f = args[key].file
+            # print(dir(f))
             buf = io.BytesIO()
-            f.save(buf)
+            buf.write(f.read())
+            buf.flush()
+
+            # buf = io.BytesIO()
+            # f.save(buf)
             f.close()
-            filename = f.filename
+            filename = args[key].filename
         if args.get('{}_url'.format(key)) is not None:
-            obj_url = args['{key}_url'.format(key)]
+            obj_url = args['{key}_url'.format(key=key)]
             # Download file
+            # TODO: async call
             r = requests.get(obj_url)
             buf = io.BytesIO()
             buf.write(r.content)
@@ -71,48 +77,35 @@ class Predict(Resource):
             data = args['text']
         return WrappaText(data)
 
-    def _parse_request(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            'file', type=werkzeug.datastructures.FileStorage, location='files')
-        parser.add_argument(
-            'image', type=werkzeug.datastructures.FileStorage, location='files')
-        parser.add_argument(
-            'file_url', type=str)
-        parser.add_argument(
-            'image_url', type=str)
-        parser.add_argument(
-            'text', type=str
-        )
-        parser.add_argument('Authorization', type=str, location='headers')
-        args = parser.parse_args()
+    def _check_auth(self, request):
+        if not self._server_info['passphrase']:
+            return True
 
-        if self._server_info['passphrase']:
-            if args['Authorization'] is None:
-                return None
-            if 'Token' in args['Authorization']:
-                token = args['Authorization'][6:]
-            else:
-                token = args['Authorization']
-            if token not in self._server_info['passphrase']:
-                return None
+        token = request.headers.get('Authorization')
+        
+        if token is None:
+            return False
+        if 'Token' in token:
+            token = token[6:]
 
+        return token in self._server_info['passphrase']
+
+    async def _parse_request(self, request):
+        data = await request.post()
+       
         input_spec = self._server_info['specification']['input']
         resp = WrappaObject()
         if 'image' in input_spec:
-            resp.set_value(self._parse_file_object(args, 'image'))
+            resp.set_value(self._parse_file_object(data, 'image'))
         if 'file' in input_spec:
-            resp.set_value(self._parse_file_object(args, 'file'))
+            resp.set_value(self._parse_file_object(data, 'file'))
         if 'text' in input_spec:
-            resp.set_value(self._parse_text(args))
+            resp.set_value(self._parse_text(data))
         return resp
 
     @staticmethod
-    def _response_type():
-        parser = reqparse.RequestParser()
-        parser.add_argument('Accept', type=str, location='headers')
-        args = parser.parse_args()
-        accept_type = args['Accept']
+    def _get_response_type(request):
+        accept_type = request.headers.get('Accept')
 
         if accept_type in [None, 'multipart/form-data']:
             return 'multipart/form-data'
@@ -121,12 +114,12 @@ class Predict(Resource):
 
         return None
 
-    def _prepare_json_response(self, response):
+    def _prepare_json_response(self, data):
         output_spec = self._server_info['specification']['output']
-        if not isinstance(response, (dict, list,)) or 'json' not in output_spec:
+        if not isinstance(data, (dict, list,)) or 'json' not in output_spec:
             return None
 
-        return response
+        return web.json_response(data=data, status=200)
 
     @staticmethod
     def _add_fields_file_object_value(fields, value, key, index=None):
@@ -178,20 +171,19 @@ class Predict(Resource):
             fields[key] = value
         return fields
 
-    def _prepare_form_data_response(self, response):
+    async def _prepare_form_data_response(self, request, data):
         output_spec = self._server_info['specification']['output']
-        resp = make_response()
         fields = {}
 
         for spec in ['image', 'file']:
             if spec in output_spec:
                 if 'list' in output_spec:
-                    for i, v in enumerate(response):
+                    for i, v in enumerate(data):
                         fields = self._add_fields_file_object_value(
                             fields, getattr(v, spec).as_dict, spec, index=i)
                 else:
                     fields = self._add_fields_file_object_value(
-                        fields, getattr(response, spec).as_dict, spec)
+                        fields, getattr(data, spec).as_dict, spec)
 
         for spec in ['image_url', 'file_url']:
             if spec in output_spec:
@@ -200,45 +192,80 @@ class Predict(Resource):
                     'image_url': 'image'
                 }[spec]
                 if 'list' in output_spec:
-                    for i, v in enumerate(response):
+                    for i, v in enumerate(data):
                         fields = self._add_fields_text_value(
                             fields, getattr(v, obj_type).url, spec, index=i)
                 else:
                     fields = self._add_fields_text_value(
-                        fields, getattr(response, obj_type).url, spec)
+                        fields, getattr(data, obj_type).url, spec)
 
         if 'text' in output_spec:
             if 'list' in output_spec:
-                for i, v in enumerate(response):
+                for i, v in enumerate(data):
                     fields = self._add_fields_text_value(
                         fields, getattr(v, 'text').text, 'text', index=i)
             else:
                 fields = self._add_fields_text_value(
-                    fields, getattr(response, 'text').text, 'text')
+                    fields, getattr(data, 'text').text, 'text')
 
-        me = MultipartEncoder(fields=fields)
-        resp = make_response(me.to_string())
-        resp.mimetype = me.content_type
-        return resp
+        # me = MultipartEncoder(fields=fields)
+        # File: (filename, buf, 'image/{ext}'.format(ext=ext))
+        # Text: text
+        response = web.StreamResponse(
+            status=200,
+            reason='OK',
+            headers={
+                'Content-Type': 'multipart/form-data',
+            },
+        )
+        await response.prepare(request)
+        final = len(fields)
+        with MultipartWriter('form-data') as mpwriter:
+            ind = 0
+            for k, value in fields.items():
+                ind += 1
+                if isinstance(value, tuple):
+                    mpwriter.append(value[1], {
+                        'Content-Disposition': 'form-data',
+                        'Content-Type': value[2],
+                        'name': k,
+                        'filename': value[0],
+                    })
+                else:
+                    mpwriter.append(value, {
+                        'Content-Disposition': 'form-data',
+                        'name': k,
+                    })
+                close_boundary = final == ind
+                await mpwriter.write(response, close_boundary=close_boundary)
+        # await response.drain()
+        
+        # resp = make_response(me.to_string())
+        # resp.mimetype = me.content_type
+        return response
 
-    def post(self):
+    async def post(self, request):
+        # Check authorization
+        if not self._check_auth(request):
+            return abort(401, message='Unauthorized')
+        
         # Parse request
-        response_type = self._response_type()
+        response_type = self._get_response_type(request)
         if response_type is None:
-            abort(400, message='Invalid Access header value')
+            return abort(400, message='Invalid Access header value')
         try:
-            data = self._parse_request()
+            data = await self._parse_request(request)
         except Exception as e:
             print(
                 'Failed to parse request with exception\n{exception}'.format(
                     exception=traceback.format_exc()
                 ),
                 file=sys.stderr)
-            abort(400, message='Unbale to parse request: ' + str(e))
+            return abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
-            abort(403, message='Forbidden')
+            return abort(403, message='Forbidden')
         if data == WrappaObject():
-            abort(400, message='Invalid data')
+            return abort(400, message='Invalid data')
 
         # Send data to request
         try:
@@ -246,14 +273,23 @@ class Predict(Resource):
             # For now just create array of a single object
             if 'json' in self._server_info['specification']['output']:
                 is_json = response_type == 'application/json'
-                [res, *_] = self._ds_model.predict([data],
-                                                   as_json=is_json)
+                if asyncio.iscoroutinefunction(self._ds_model.predict):
+                    tmp = await self._ds_model.predict([data],
+                                                    as_json=is_json)
+                    [res, *_] = tmp
+                else:
+                    [res, *_] = self._ds_model.predict([data],
+                                                    as_json=is_json)
             else:
                 f_kwargs = {}
                 if 'as_json' in self._ds_model.predict.__code__.co_varnames:
                     f_kwargs['as_json'] = False
 
-                [res, *_] = self._ds_model.predict([data], **f_kwargs)
+                if asyncio.iscoroutinefunction(self._ds_model.predict):
+                    tmp = await self._ds_model.predict([data], **f_kwargs)
+                    [res, *_] = tmp
+                else:
+                    [res, *_] = self._ds_model.predict([data], **f_kwargs)
             if self._storage is not None:
                 self._storage.add(data, res)
         except Exception as e:
@@ -264,13 +300,15 @@ class Predict(Resource):
                 file=sys.stderr)
             if self._storage is not None:
                 self._storage.add(data, str(e))
-            abort(400, message='DS model failed to process data: ' + str(e))
+            return abort(400, message='DS model failed to process data: ' + str(e))
 
         # Prepare and send response
-        response = {
-            'multipart/form-data': self._prepare_form_data_response,
-            'application/json': self._prepare_json_response
-        }[response_type](res)
+        response = None
+        if response_type == 'multipart/form-data':
+            response = await self._prepare_form_data_response(request, res)
+        elif response_type == 'application/json':
+            response = self._prepare_json_response(res)
+
         if response is None:
-            abort(400, message='Unable to prepare response')
+            return abort(400, message='Unable to prepare response')
         return response

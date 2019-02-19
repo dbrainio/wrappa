@@ -1,8 +1,12 @@
-from flask_restful import Resource
+# from flask_restful import Resource
+from aiohttp import web
 
 
-class Healthcheck(Resource):
+class Healthcheck:
+
+    def __init__(self):
+        pass
 
     @staticmethod
-    def get():
-        return None, 204
+    async def get(request):
+        return web.Response(body=None, status=204)
