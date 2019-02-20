@@ -1,90 +1,13 @@
-import importlib.util
 import io
 import sys
 import traceback
 import asyncio
-import time
 
 from aiohttp import web, MultipartWriter, ClientSession
 
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 from ..common import abort
-
-class Predictor:
-    @classmethod
-    async def create(cls, config):
-        self = Predictor(config)
-        self._queue = asyncio.Queue()
-        asyncio.ensure_future(self.start_pooling())
-        return self
-
-    def __init__(self, config):
-        # Dynamically import package
-        spec = importlib.util.spec_from_file_location(
-            'DSModel', config['model_path'])
-        ds_lib = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(ds_lib)
-        # Init ds model
-        self._ds_model = ds_lib.DSModel(**config['config'])
-
-    async def start_pooling(self):
-        requests_with_json = []
-        requests_without_json = []
-        while True:
-            try:
-                # print('Pooling :: Waiting from queue')
-                request = self._queue.get_nowait()
-                # print('Pooling :: Got value from queue ::', request)
-                if request[-1]:
-                    requests_with_json.append(request[:-1])
-                else:
-                    requests_without_json.append(request[:-1])
-            except asyncio.QueueEmpty:
-                # print('Pooling :: Exception from queue')
-                await asyncio.sleep(0.05)
-                # print(requests_with_json, requests_without_json)
-                # Execute task
-                res1, res2 = [], []
-                if requests_with_json:
-                    res1 = await self._predict([x[1] for x in requests_with_json], True)
-
-                if requests_without_json:
-                    res2 = await self._predict([x[1] for x in requests_without_json], False)
-                
-                # print(res1, res2)
-                if res1 is not None:
-                    for res, (queue, _) in zip(res1, requests_with_json):
-                        # print('Pooling :: in res1', queue)
-                        queue.put_nowait(res)
-                
-                if res2 is not None:
-                    for res, (queue, _) in zip(res2, requests_without_json):
-                        # print('Pooling :: in res2', queue)
-                        queue.put_nowait(res)
-
-                requests_with_json = []
-                requests_without_json = []
-
-    async def _predict(self, data, is_json):
-        f_kwargs = {}
-        if 'as_json' in self._ds_model.predict.__code__.co_varnames:
-            f_kwargs['as_json'] = is_json or False
-        
-        if asyncio.iscoroutinefunction(self._ds_model.predict):
-            res = await self._ds_model.predict(data, **f_kwargs)
-        else:
-            res = self._ds_model.predict(data, **f_kwargs)
-        
-        return res
-    
-    async def predict(self, data, is_json):
-        queue = asyncio.Queue(maxsize=1)
-        # print('Putting in queue')
-        self._queue.put_nowait((queue, data, is_json))
-        # print('Waiting from queue')
-        resp = await queue.get()
-        # print('Got from queue')
-        return resp
+from .predictor import Predictor
 
 class Predict:
 
@@ -136,13 +59,13 @@ class Predict:
             'image': WrappaImage,
             'file': WrappaFile
         }
-        return to_wrappa_type[key](**data)
+        return to_wrappa_type[key.split('-')[0]](**data)
 
     @staticmethod
-    def _parse_text(args):
+    def _parse_text(args, key):
         data = None
-        if args.get('text') is not None:
-            data = args['text']
+        if args.get(key) is not None:
+            data = args[key]
         return WrappaText(data)
 
     def _check_auth(self, request):
@@ -158,17 +81,32 @@ class Predict:
 
         return token in self._server_info['passphrase']
 
+    async def _parse_one_request(self, data, key=None):
+        input_spec = self._server_info['specification']['input']
+        resp = WrappaObject()
+        if 'image' in input_spec:
+            k = 'image' if key is None else 'image-{}'.format(key)
+            resp.set_value(await self._parse_file_object(data, k))
+        if 'file' in input_spec:
+            k = 'file' if key is None else 'file-{}'.format(key)
+            resp.set_value(await self._parse_file_object(data, k))
+        if 'text' in input_spec:
+            k = 'text' if key is None else 'text-{}'.format(key)
+            resp.set_value(self._parse_text(data, k))
+        return resp
+
     async def _parse_request(self, request):
         data = await request.post()
   
         input_spec = self._server_info['specification']['input']
-        resp = WrappaObject()
-        if 'image' in input_spec:
-            resp.set_value(await self._parse_file_object(data, 'image'))
-        if 'file' in input_spec:
-            resp.set_value(await self._parse_file_object(data, 'file'))
-        if 'text' in input_spec:
-            resp.set_value(self._parse_text(data))
+        if 'list' in input_spec:
+            resp = []
+            max_ind = max(map(lambda x: int(x.split('-')[-1]), data.keys()))
+            for i in range(max_ind):
+                resp.append(await self._parse_one_request(data, i))
+        else:
+            resp = await self._parse_one_request(data)
+       
         return resp
 
     @staticmethod
@@ -305,7 +243,7 @@ class Predict:
         # Check authorization
         if not self._check_auth(request):
             return abort(401, message='Unauthorized')
-        
+     
         # Parse request
         response_type = self._get_response_type(request)
         if response_type is None:
