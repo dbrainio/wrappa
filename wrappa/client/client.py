@@ -1,36 +1,53 @@
 import io
 import os
 from collections import defaultdict
+from typing import TypeVar, List
 
 import requests
 from requests_toolbelt import MultipartEncoder, MultipartDecoder
 
 from ..models import WrappaObject, WrappaImage, WrappaFile, WrappaText
 
+WrappaRequest = TypeVar('WrappaRequest', WrappaObject, List[WrappaObject])
 
 class Client:
 
-    def __init__(self, address: str, passphrase: str=''):
+    def __init__(self, address: str, passphrase: str = ''):
         self._address: str = address
         self._passphrase: str = passphrase
 
-    def predict(self, data: WrappaObject, as_json: bool=False):
+    @staticmethod
+    def _prepare_request(data: WrappaObject, key: int = None) -> dict:
         fields = {}
-
         if data.image is not None:
-            fields['image'] = (
+            k = 'image' if key is None else 'image-{}'.format(key)
+            fields[k] = (
                 data.image.name,
                 io.BytesIO(data.image.payload),
                 'image/{}'.format(data.image.ext),
             )
         if data.file is not None:
-            fields['file'] = (
+            k = 'file' if key is None else 'file-{}'.format(key)
+            fields[k] = (
                 data.file.name,
                 io.BytesIO(data.file.payload),
                 'applications/octet-stream',
             )
         if data.text is not None:
-            fields['text'] = data.text.text
+            k = 'text' if key is None else 'text-{}'.format(key)
+            fields[k] = data.text.text
+        return fields
+
+    def predict(self, data: WrappaRequest, as_json: bool = False):
+        fields = {}
+        if isinstance(data, list):
+            for i, v in enumerate(data):
+                res = self._prepare_request(v, i)
+                fields.update(res)
+        elif isinstance(data, WrappaObject):
+            fields = self._prepare_request(data)
+        else:
+            raise ValueError('Wrong type for data')
 
         me = MultipartEncoder(fields=fields)
         headers = {

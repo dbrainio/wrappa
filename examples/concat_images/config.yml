@@ -1,0 +1,16 @@
+server_info:
+  address: "http://127.0.0.1:8000"
+  passphrase:
+    - "123456"
+  specification:
+    input:
+      - image
+      - list
+    output:
+      - image
+  name: "Concat images service"
+  invitation_message: "Send images"
+port: 8000
+ds_model_config:
+  model_path: 'examples/concat_images/concat_images.py'
+  config: {}

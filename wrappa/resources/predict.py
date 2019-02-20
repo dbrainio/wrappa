@@ -70,16 +70,16 @@ class Predict:
 
     def _check_auth(self, request):
         if not self._server_info['passphrase']:
-            return True
+            return True, None
 
         token = request.headers.get('Authorization')
         
         if token is None:
-            return False
+            return False, None
         if 'Token' in token:
             token = token[6:]
 
-        return token in self._server_info['passphrase']
+        return token in self._server_info['passphrase'], token
 
     async def _parse_one_request(self, data, key=None):
         input_spec = self._server_info['specification']['input']
@@ -102,7 +102,7 @@ class Predict:
         if 'list' in input_spec:
             resp = []
             max_ind = max(map(lambda x: int(x.split('-')[-1]), data.keys()))
-            for i in range(max_ind):
+            for i in range(max_ind+1):
                 resp.append(await self._parse_one_request(data, i))
         else:
             resp = await self._parse_one_request(data)
@@ -241,13 +241,14 @@ class Predict:
     async def post(self, request):
         await self._init()
         # Check authorization
-        if not self._check_auth(request):
+        authorized, token = self._check_auth(request)
+        if not authorized:
             return abort(401, message='Unauthorized')
      
         # Parse request
         response_type = self._get_response_type(request)
         if response_type is None:
-            return abort(400, message='Invalid Access header value')
+            return abort(400, message='Invalid Accept header value')
         try:
             data = await self._parse_request(request)
         except Exception as e:
@@ -259,9 +260,8 @@ class Predict:
             return abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
             return abort(403, message='Forbidden')
-        if data == WrappaObject():
+        if data == WrappaObject() or (isinstance(data, list) and (not data or WrappaObject() in data)):
             return abort(400, message='Invalid data')
-
         # Send data to request
         try:
             # Predict should accept array of objects
@@ -273,7 +273,7 @@ class Predict:
             res = await self._predictor.predict(data, is_json)
             
             if self._storage is not None:
-                self._storage.add(data, res)
+                self._storage.add(token, data, res)
         except Exception as e:
             print(
                 'Failed to parse request with exception\n{exception}'.format(
@@ -281,7 +281,7 @@ class Predict:
                 ),
                 file=sys.stderr)
             if self._storage is not None:
-                self._storage.add(data, str(e))
+                self._storage.add(token, data, str(e))
             return abort(400, message='DS model failed to process data: ' + str(e))
 
         # Prepare and send response
