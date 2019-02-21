@@ -1,6 +1,7 @@
 # Custom
 *.DS_Store
 tmp_*
+*.jpg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

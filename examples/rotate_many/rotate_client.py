@@ -5,7 +5,7 @@ cl = Client('http://localhost:8000', '123456')
 wo = WrappaObject(WrappaImage(
     url='https://pbs.twimg.com/profile_images/54789364/JPG-logo-highres.jpg'))
 
-_ = cl.healthcheck()
+cl.healthcheck()
 
 resp = cl.predict(wo)
 

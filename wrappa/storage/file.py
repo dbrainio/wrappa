@@ -14,12 +14,12 @@ class FileStorage:
             os.mkdir(fpath)
         self._fpath = fpath
 
-    def add(self, inp, out):
-        thr = Thread(target=self._add, args=(self._fpath, inp, out))
+    def add(self, token, inp, out):
+        thr = Thread(target=self._add, args=(self._fpath, token, inp, out))
         thr.start()
 
     @staticmethod
-    def _add(storagepath, inp, out):
+    def _add(storagepath, token, inp, out):
         def _handle_wo(storagepath, prefix, wo, t, counter=None):
             data = {}
             suffix = str(counter) + '_' if counter is not None else ''
@@ -37,9 +37,11 @@ class FileStorage:
                 data['text'] = wo.text.text
             return data
 
-        if not isinstance(inp, WrappaObject):
-            raise TypeError('inp must be WrappaObject')
+        if not isinstance(inp, (WrappaObject, list)):
+            raise TypeError('inp must be WrappaObject or list')
         _prefix = str(time()).replace('.', '_')
+        if token is not None:
+            _prefix += '_' + token
         data = {}
         handle_wo = partial(_handle_wo, storagepath, _prefix)
         for t, el in (('inp', inp), ('out', out)):

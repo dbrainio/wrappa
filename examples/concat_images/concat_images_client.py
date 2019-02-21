@@ -7,7 +7,6 @@ wo = WrappaObject(WrappaImage(
 
 cl.healthcheck()
 
-resp = cl.predict(wo)
+resp = cl.predict([wo, wo])
 
-
-resp.image.save_to_disk('./rotated.jpg')
+resp.image.save_to_disk('./concat_images.jpg')

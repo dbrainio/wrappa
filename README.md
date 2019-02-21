@@ -137,6 +137,10 @@ Array of **WrappaFile** will be passed to DSModel.predict.
 Array of **WrappaText** will be passed to DSModel.predict.
 **WrappaText** class has `text` property.
 
+
+**list**
+Array of **WrappaObject** will be passed to DSModel.predict.
+
 ### Output
 All outputs must be wrapped in **WrappaObject**.
 
