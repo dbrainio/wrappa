@@ -263,26 +263,27 @@ class Predict:
         if data == WrappaObject() or (isinstance(data, list) and (not data or WrappaObject() in data)):
             return abort(400, message='Invalid data')
         # Send data to request
-        try:
-            # Predict should accept array of objects
-            # For now just create array of a single object
-            is_json = False
-            if 'json' in self._server_info['specification']['output']:
-                is_json = response_type == 'application/json'
+        is_json = False
+        if 'json' in self._server_info['specification']['output']:
+            is_json = response_type == 'application/json'
 
-            res = await self._predictor.predict(data, is_json)
-            
-            if self._storage is not None:
-                self._storage.add(token, data, res)
-        except Exception as e:
+        res = await self._predictor.predict(data, is_json)
+
+        exception = None
+        if isinstance(res, tuple):
+            exception, trace = res
             print(
                 'Failed to parse request with exception\n{exception}'.format(
-                    exception=traceback.format_exc()
+                    exception=trace
                 ),
                 file=sys.stderr)
-            if self._storage is not None:
-                self._storage.add(token, data, str(e))
-            return abort(400, message='DS model failed to process data: ' + str(e))
+            res = str(exception)
+        
+        if self._storage is not None:
+            self._storage.add(token, data, res)
+            
+        if exception is not None:
+            return abort(400, message='DS model failed to process data: ' + res)
 
         # Prepare and send response
         response = None

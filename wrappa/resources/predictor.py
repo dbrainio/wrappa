@@ -1,4 +1,5 @@
 import importlib.util
+import traceback
 
 import asyncio
 
@@ -39,10 +40,18 @@ class Predictor:
                 # Execute task
                 res1, res2 = [], []
                 if requests_with_json:
-                    res1 = await self._predict([x[1] for x in requests_with_json], True)
+                    try:
+                        res1 = await self._predict([x[1] for x in requests_with_json], True)
+                    except Exception as e:
+                        trace = traceback.format_exc()
+                        res1 = [(e, trace) for _ in requests_with_json]
 
                 if requests_without_json:
-                    res2 = await self._predict([x[1] for x in requests_without_json], False)
+                    try:
+                        res2 = await self._predict([x[1] for x in requests_without_json], False)
+                    except Exception as e:
+                        trace = traceback.format_exc()
+                        res2 = [(e, trace) for _ in requests_without_json]
                
                 # print(res1, res2)
                 if res1 is not None:
