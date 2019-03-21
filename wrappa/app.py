@@ -7,7 +7,13 @@ import consul
 from .resources import Healthcheck, Predict
 
 class App:
-    def __init__(self, debug=False, disable_consul=False, **kwargs):
+    def __init__(
+        self,
+        debug=False,
+        disable_consul=False,
+        max_request_size=1024**2*10, # 10 Mb by default
+        **kwargs
+    ):
 
         # Parse kwargs
         self._port = kwargs['port']
@@ -22,7 +28,10 @@ class App:
                 else:
                     print('[Warning] Missing consul config')
 
-        app = web.Application()
+        app = web.Application(
+            debug=self._debug,
+            client_max_size=max_request_size
+        )
         # TODO: figure out what to do with timeout
 
         healthchecker = Healthcheck()
