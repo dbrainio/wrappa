@@ -267,7 +267,7 @@ class Predict:
         if 'json' in self._server_info['specification']['output']:
             is_json = response_type == 'application/json'
 
-        res = await self._predictor.predict(data, is_json)
+        res = await self._predictor.predict(data, is_json, request.path)
 
         exception = None
         if isinstance(res, tuple):

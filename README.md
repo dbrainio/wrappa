@@ -114,6 +114,8 @@ ds_model_config:
   model_path: 'path/to/DSModel'
   # config which will be passed to DSModel constructor
   config: {}
+  predict_aliases:
+    - '/some/url/path'
 ```
 
 ## Supported specification

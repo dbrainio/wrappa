@@ -1,4 +1,5 @@
 import json
+from typing import *
 
 from aiohttp import web
 import consul
@@ -39,6 +40,9 @@ class App:
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])
+
+        for path in kwargs.get('ds_model_config', {}).get('predict_aliases', []):
+            app.add_routes([web.post(path, predictor.post)])
 
         self._app = app
 
