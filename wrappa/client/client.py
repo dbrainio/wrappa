@@ -38,7 +38,7 @@ class Client:
             fields[k] = data.text.text
         return fields
 
-    def predict(self, data: WrappaRequest, as_json: bool = False):
+    def predict(self, data: WrappaRequest, as_json: bool = False, path: str = None):
         fields = {}
         if isinstance(data, list):
             for i, v in enumerate(data):
@@ -61,7 +61,7 @@ class Client:
             headers['Accept'] = 'multipart/form-data'
 
         response = requests.post(
-            os.path.join(self._address, 'predict'),
+            os.path.join(self._address, path if path else 'predict'),
             headers=headers,
             data=me,
         )

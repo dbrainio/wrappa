@@ -45,7 +45,7 @@ class Predictor:
                     ]
                 
                 for predicts in self._requests_manager.values():
-                    for predict, queue in predicts:
+                    for queue, predict in predicts:
                         queue.put_nowait(predict)
                 self._requests_manager.clear()
 
