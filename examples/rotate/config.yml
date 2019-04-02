@@ -13,3 +13,5 @@ port: 8000
 ds_model_config:
   model_path: 'examples/rotate/rotate.py'
   config: {}
+  predict_aliases:
+    - /predict/180

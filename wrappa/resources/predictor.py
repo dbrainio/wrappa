@@ -3,6 +3,9 @@ import traceback
 
 import asyncio
 
+from .requests_manager import RequestsManager
+
+path2def_name = lambda path: path.strip('/').replace('/', '_')
 
 class Predictor:
     @classmethod
@@ -20,69 +23,54 @@ class Predictor:
         spec.loader.exec_module(ds_lib)
         # Init ds model
         self._ds_model = ds_lib.DSModel(**config['config'])
+        self._requests_manager = RequestsManager()
 
     async def start_pooling(self):
-        requests_with_json = []
-        requests_without_json = []
         while True:
             try:
-                # print('Pooling :: Waiting from queue')
                 request = self._queue.get_nowait()
-                # print('Pooling :: Got value from queue ::', request)
-                if request[-1]:
-                    requests_with_json.append(request[:-1])
-                else:
-                    requests_without_json.append(request[:-1])
+                self._requests_manager[request[-2:]].append(request[:-2])
             except asyncio.QueueEmpty:
-                # print('Pooling :: Exception from queue')
                 await asyncio.sleep(0.05)
-                # print(requests_with_json, requests_without_json)
-                # Execute task
-                res1, res2 = [], []
-                if requests_with_json:
+                
+                for key, data in self._requests_manager.items():
                     try:
-                        res1 = await self._predict([x[1] for x in requests_with_json], True)
+                        predicts = await self._predict([x[1] for x in data], key[1], key[0])
                     except Exception as e:
                         trace = traceback.format_exc()
-                        res1 = [(e, trace) for _ in requests_with_json]
+                        predicts = [(e, trace) for _ in data]
+                    self._requests_manager[key] = [
+                        (queue, predict)
+                        for predict, (queue, _) in zip(predicts, self._requests_manager[key]) 
+                    ]
+                
+                for predicts in self._requests_manager.values():
+                    for queue, predict in predicts:
+                        queue.put_nowait(predict)
+                self._requests_manager.clear()
 
-                if requests_without_json:
-                    try:
-                        res2 = await self._predict([x[1] for x in requests_without_json], False)
-                    except Exception as e:
-                        trace = traceback.format_exc()
-                        res2 = [(e, trace) for _ in requests_without_json]
-               
-                # print(res1, res2)
-                if res1 is not None:
-                    for res, (queue, _) in zip(res1, requests_with_json):
-                        # print('Pooling :: in res1', queue)
-                        queue.put_nowait(res)
-               
-                if res2 is not None:
-                    for res, (queue, _) in zip(res2, requests_without_json):
-                        # print('Pooling :: in res2', queue)
-                        queue.put_nowait(res)
-
-                requests_with_json = []
-                requests_without_json = []
-
-    async def _predict(self, data, is_json):
+    async def _predict(self, data, is_json: bool, predict_name: str):
+        predict_method = (
+            getattr(self._ds_model, predict_name) 
+            if hasattr(self._ds_model, predict_name) 
+            else self._ds_model.predict
+        )
         f_kwargs = {}
-        if 'as_json' in self._ds_model.predict.__code__.co_varnames:
+        if 'as_json' in predict_method.__code__.co_varnames:
             f_kwargs['as_json'] = is_json or False
         
-        if asyncio.iscoroutinefunction(self._ds_model.predict):
-            res = await self._ds_model.predict(data, **f_kwargs)
+        if asyncio.iscoroutinefunction(predict_method):
+            res = await predict_method(data, **f_kwargs)
         else:
-            res = self._ds_model.predict(data, **f_kwargs)
+            res = predict_method(data, **f_kwargs)
         
         return res
     
-    async def predict(self, data, is_json):
+    async def predict(self, data, is_json: bool, path: str):
+        predict_name = path2def_name(path)
         queue = asyncio.Queue(maxsize=1)
         # print('Putting in queue')
-        self._queue.put_nowait((queue, data, is_json))
+        self._queue.put_nowait((queue, data, predict_name, is_json))
         # print('Waiting from queue')
         resp = await queue.get()
         # print('Got from queue')
