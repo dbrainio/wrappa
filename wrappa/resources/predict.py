@@ -1,16 +1,15 @@
 import io
 import sys
 import traceback
-import asyncio
 
 from aiohttp import web, MultipartWriter, ClientSession
 
-from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
-from ..common import abort
 from .predictor import Predictor
+from ..common import abort
+from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
+
 
 class Predict:
-
     def __init__(self, **kwargs):
         self._server_info = kwargs['server_info']
         self._predictor = Predictor.create(kwargs['ds_model_config'])
@@ -42,7 +41,7 @@ class Predict:
                     buf = io.BytesIO()
                     buf.write(data)
                     buf.flush()
-        
+
             tmp = obj_url.split('/')[-1].split('?')
             if len(tmp) <= 1:
                 filename = ''.join(tmp)
@@ -73,7 +72,7 @@ class Predict:
             return True, None
 
         token = request.headers.get('Authorization')
-        
+
         if token is None:
             return False, None
         if 'Token' in token:
@@ -97,16 +96,16 @@ class Predict:
 
     async def _parse_request(self, request):
         data = await request.post()
-  
+
         input_spec = self._server_info['specification']['input']
         if 'list' in input_spec:
             resp = []
             max_ind = max(map(lambda x: int(x.split('-')[-1]), data.keys()))
-            for i in range(max_ind+1):
+            for i in range(max_ind + 1):
                 resp.append(await self._parse_one_request(data, i))
         else:
             resp = await self._parse_one_request(data)
-       
+
         return resp
 
     @staticmethod
@@ -217,7 +216,8 @@ class Predict:
             response = web.StreamResponse(
                 status=200,
                 headers={
-                    'Content-Type': 'multipart/form-data;boundary={}'.format(mpwriter.boundary),
+                    'Content-Type': 'multipart/form-data;boundary={}'.format(
+                        mpwriter.boundary),
                 }
             )
             await response.prepare(request)
@@ -244,7 +244,7 @@ class Predict:
         authorized, token = self._check_auth(request)
         if not authorized:
             return abort(401, message='Unauthorized')
-     
+
         # Parse request
         response_type = self._get_response_type(request)
         if response_type is None:
@@ -260,7 +260,8 @@ class Predict:
             return abort(400, message='Unbale to parse request: ' + str(e))
         if data is None:
             return abort(403, message='Forbidden')
-        if data == WrappaObject() or (isinstance(data, list) and (not data or WrappaObject() in data)):
+        if data == WrappaObject() or (
+            isinstance(data, list) and (not data or WrappaObject() in data)):
             return abort(400, message='Invalid data')
         # Send data to request
         is_json = False
@@ -278,12 +279,13 @@ class Predict:
                 ),
                 file=sys.stderr)
             res = str(exception)
-        
+
         if self._storage is not None:
             self._storage.add(token, data, res)
-            
+
         if exception is not None:
-            return abort(400, message='DS model failed to process data: ' + res)
+            return abort(400,
+                         message='DS model failed to process data: ' + res)
 
         # Prepare and send response
         response = None

@@ -49,4 +49,5 @@ def legacy_converter(f):
             else:
                 new_resp.append(_parse_legacy_response(el))
         return new_resp
+
     return _f

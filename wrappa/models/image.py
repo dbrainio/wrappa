@@ -23,7 +23,8 @@ class WrappaImage(WrappaFile):
 
         image = Image.fromarray(payload)
         # Use PIL format name instead of extension if applicable
-        fmt = WrappaImage._EXT_TO_FORMAT.get(ext_to_store.lower(), ext_to_store)
+        fmt = WrappaImage._EXT_TO_FORMAT.get(ext_to_store.lower(),
+                                             ext_to_store)
 
         with io.BytesIO() as f:
             image.save(f, fmt)

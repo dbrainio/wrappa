@@ -1,5 +1,5 @@
-import importlib.util
 import argparse
+import importlib.util
 import json
 
 import numpy as np
@@ -11,17 +11,19 @@ from wrappa import read_config, WrappaFile, \
 def validate_output_spec(spec, v):
     if 'image' in spec['output'] \
             and (not isinstance(v.image, WrappaImage) or
-                 v.image is None or v.image.ext is None or '.' in v.image.ext):
+                         v.image is None or v.image.ext is None or '.' in v.image.ext):
         raise TypeError(
             'Image provided in output spec, but result of prediction is type of {t}'.format(
                 t=type(v.image)
             ))
-    if 'text' in spec['output'] and (not isinstance(v.text, WrappaText) or v.text.text is None):
+    if 'text' in spec['output'] and (
+        not isinstance(v.text, WrappaText) or v.text.text is None):
         raise TypeError(
             'Text provided in output spec, but result of prediction is type of {t}'.format(
                 t=type(v.text)
             ))
-    if 'file' in spec['output'] and (not isinstance(v.file, WrappaFile) or v.file.payload is None):
+    if 'file' in spec['output'] and (
+        not isinstance(v.file, WrappaFile) or v.file.payload is None):
         raise TypeError(
             'File provided in output spec, but result of prediction is type of {t}'.format(
                 type(v.file)
