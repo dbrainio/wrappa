@@ -1,10 +1,9 @@
-from .image import WrappaImage
 from .file import WrappaFile
+from .image import WrappaImage
 from .text import WrappaText
 
 
 class WrappaObject:
-
     def __init__(self, *args):
         self._file = None
         self._image = None

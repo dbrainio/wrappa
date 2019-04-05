@@ -4,7 +4,6 @@ import distutils.cmd
 import distutils.log
 import os
 import subprocess
-import unittest
 
 from setuptools import find_packages, setup
 
@@ -61,7 +60,8 @@ CONFIG = {
     'description': 'wrappa wraps ds app in http server',
     'author': 'seka17',
     'test_suite': 'wrappa',
-    'packages': find_packages(exclude=['dummy', 'tests', '*.tests', '*.tests.*']),
+    'packages': find_packages(
+        exclude=['dummy', 'tests', '*.tests', '*.tests.*']),
     'entry_points': {
         'console_scripts': [
             'wrappa = wrappa.__main__:main',

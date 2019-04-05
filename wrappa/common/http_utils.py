@@ -1,5 +1,6 @@
 from aiohttp import web
 
+
 def abort(http_code, message):
     resp = {
         'code': http_code,

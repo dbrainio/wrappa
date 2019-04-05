@@ -10,8 +10,8 @@ from ..models import WrappaObject, WrappaImage, WrappaFile, WrappaText
 
 WrappaRequest = TypeVar('WrappaRequest', WrappaObject, List[WrappaObject])
 
-class Client:
 
+class Client:
     def __init__(self, address: str, passphrase: str = ''):
         self._address: str = address
         self._passphrase: str = passphrase
@@ -38,7 +38,8 @@ class Client:
             fields[k] = data.text.text
         return fields
 
-    def predict(self, data: WrappaRequest, as_json: bool = False, path: str = None):
+    def predict(self, data: WrappaRequest, as_json: bool = False,
+                path: str = None):
         fields = {}
         if isinstance(data, list):
             for i, v in enumerate(data):

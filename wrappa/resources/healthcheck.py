@@ -2,7 +2,6 @@ from aiohttp import web
 
 
 class Healthcheck:
-
     def __init__(self):
         pass
 

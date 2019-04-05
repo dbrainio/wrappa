@@ -1,28 +1,42 @@
 import json
-from typing import *
 
-from aiohttp import web
 import consul
-
+from aiohttp import web
 
 from .resources import Healthcheck, Predict
+from .storage import FileStorage
+
 
 class App:
     def __init__(
-        self,
-        debug=False,
-        disable_consul=False,
-        max_request_size=1024**2*10, # 10 Mb by default
-        **kwargs
+            self,
+            debug=False,
+            disable_consul=False,
+            max_request_size=1024 ** 2 * 10,  # 10 Mb by default
+            healthcheck_class=Healthcheck,
+            predict_class=Predict,
+            **kw
     ):
+        if kw.get('server_info') and kw['server_info'].get('passphrase'):
+            if isinstance(kw['server_info']['passphrase'], str):
+                kw['server_info']['passphrase'] = [
+                    kw['server_info']['passphrase']]
+
+        if kw.get('storage'):
+            if kw['storage'].get('files'):
+                if kw['storage']['files'].get('path'):
+                    kw['storage'] = FileStorage(
+                        kw['storage']['files']['path'])
+                else:
+                    raise ValueError('Set path of files storage')
 
         # Parse kwargs
-        self._port = kwargs['port']
+        self._port = kw['port']
         self._debug = debug
 
         if not disable_consul:
             try:
-                self._register_consul(kwargs)
+                self._register_consul(kw)
             except Exception as e:
                 if not self._debug:
                     raise e
@@ -35,13 +49,13 @@ class App:
         )
         # TODO: figure out what to do with timeout
 
-        healthchecker = Healthcheck()
-        predictor = Predict(**kwargs)
+        healthchecker = healthcheck_class()
+        predictor = predict_class(**kw)
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])
 
-        for path in kwargs.get('ds_model_config', {}).get('predict_aliases', []):
+        for path in kw.get('ds_model_config', {}).get('predict_aliases', []):
             app.add_routes([web.post(path, predictor.post)])
 
         self._app = app

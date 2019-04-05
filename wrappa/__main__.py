@@ -1,6 +1,6 @@
 import argparse
 
-from wrappa import App, read_config, FileStorage
+from wrappa import App, read_config
 
 
 def main():
@@ -19,19 +19,6 @@ def main():
 
     if args.port is not None:
         config['port'] = args.port
-
-    if config.get('server_info') and config['server_info'].get('passphrase'):
-        if isinstance(config['server_info']['passphrase'], str):
-            config['server_info']['passphrase'] = [
-                config['server_info']['passphrase']]
-
-    if config.get('storage'):
-        if config['storage'].get('files'):
-            if config['storage']['files'].get('path'):
-                config['storage'] = FileStorage(
-                    config['storage']['files']['path'])
-            else:
-                raise ValueError('Set path of files storage')
 
     app = App(debug=args.debug, disable_consul=args.disable_consul, **config)
 

@@ -1,14 +1,13 @@
-import os
-from time import time
-from ..models import WrappaObject
 import json
-
-from threading import Thread
+import os
 from functools import partial
+from threading import Thread
+from time import time
+
+from ..models import WrappaObject
 
 
 class FileStorage:
-
     def __init__(self, fpath='.'):
         if not (os.path.exists(fpath) or os.path.isdir(fpath)):
             os.mkdir(fpath)
