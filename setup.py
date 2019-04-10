@@ -50,8 +50,7 @@ install_requires = [
     'requests-toolbelt>=0.8.0',
     'pyyaml>=3.13',
     'numpy>=1.14.0',
-    'Pillow>=5.0.0',
-    'aiojobs'
+    'Pillow>=5.0.0'
 ]
 
 CONFIG = {

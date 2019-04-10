@@ -2,9 +2,8 @@ import json
 
 import consul
 from aiohttp import web
-from aiojobs.aiohttp import setup
 
-from .resources import Healthcheck, Predict, AsyncResults
+from .resources import Healthcheck, Predict
 from .storage import FileStorage
 
 
@@ -16,7 +15,6 @@ class App:
             max_request_size=1024 ** 2 * 10,  # 10 Mb by default
             healthcheck_class=Healthcheck,
             predict_class=Predict,
-            async_results_class=AsyncResults,
             **kw
     ):
         if kw.get('server_info') and kw['server_info'].get('passphrase'):
@@ -53,16 +51,14 @@ class App:
 
         healthchecker = healthcheck_class()
         predictor = predict_class(**kw)
-        async_results = async_results_class()
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])
-        app.add_routes([web.get('/result/{task_id}', async_results.get)])
+        app.add_routes([web.get('/result/{task_id}', predictor.result)])
 
         for path in kw.get('ds_model_config', {}).get('predict_aliases', []):
             app.add_routes([web.post(path, predictor.post)])
 
-        setup(app)
         self._app = app
 
     @staticmethod
