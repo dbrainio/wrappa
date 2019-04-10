@@ -1,8 +1,8 @@
-import asyncio
 import uuid
 from functools import wraps
 
 from aiohttp import web
+from aiojobs.aiohttp import spawn
 
 ASYNC_TASKS = dict()
 
@@ -22,8 +22,7 @@ def asyncable(func):
         if request.query.get('async', 'false') != 'true':
             return await task
         task_id = str(uuid.uuid4())
-        loop = asyncio.get_event_loop()
-        ASYNC_TASKS[task_id] = loop.create_task(task)
+        ASYNC_TASKS[task_id] = await spawn(request, task)
         return web.json_response(data={'task_id': task_id})
 
     return wrapper
@@ -36,13 +35,13 @@ async def get_task_result(task_id):
             'error': 'not found',
         }, status=404)
     task = ASYNC_TASKS[task_id]
-    if not task.done():
+    if not task.closed:
         return web.json_response(data={
             'success': False,
             'error': 'not done',
         }, status=200)
     try:
-        return await task
+        return await task.wait()
     except Exception as e:
         return web.json_response(data={
             'success': False,

@@ -2,6 +2,7 @@ import json
 
 import consul
 from aiohttp import web
+from aiojobs.aiohttp import setup
 
 from .resources import Healthcheck, Predict, AsyncResults
 from .storage import FileStorage
@@ -61,6 +62,7 @@ class App:
         for path in kw.get('ds_model_config', {}).get('predict_aliases', []):
             app.add_routes([web.post(path, predictor.post)])
 
+        setup(app)
         self._app = app
 
     @staticmethod
