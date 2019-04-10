@@ -5,7 +5,7 @@ import traceback
 from aiohttp import web, MultipartWriter, ClientSession
 
 from .predictor import Predictor
-from ..common import abort
+from ..common import abort, asyncable
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 
 
@@ -238,6 +238,7 @@ class Predict:
             await mpwriter.write(response)
         return response
 
+    @asyncable
     async def post(self, request):
         await self._init()
         # Check authorization
@@ -261,7 +262,8 @@ class Predict:
         if data is None:
             return abort(403, message='Forbidden')
         if data == WrappaObject() or (
-            isinstance(data, list) and (not data or WrappaObject() in data)):
+                    isinstance(data, list) and (
+                            not data or WrappaObject() in data)):
             return abort(400, message='Invalid data')
         # Send data to request
         is_json = False

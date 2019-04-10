@@ -1,4 +1,4 @@
-from wrappa.common.http_utils import get_task_result
+from ..common import get_task_result
 
 
 class AsyncResults:
