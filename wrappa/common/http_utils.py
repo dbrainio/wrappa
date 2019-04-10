@@ -25,6 +25,8 @@ def asyncable(func):
         ASYNC_TASKS[task_id] = asyncio.ensure_future(task)
         return web.json_response(data={'task_id': task_id})
 
+    return wrapper
+
 
 async def get_task_result(task_id):
     if task_id not in ASYNC_TASKS:
