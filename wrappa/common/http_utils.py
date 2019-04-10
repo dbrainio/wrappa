@@ -22,7 +22,8 @@ def asyncable(func):
         if request.query.get('async', 'false') != 'true':
             return await task
         task_id = str(uuid.uuid4())
-        ASYNC_TASKS[task_id] = asyncio.ensure_future(task)
+        loop = asyncio.get_event_loop()
+        ASYNC_TASKS[task_id] = loop.create_task(task)
         return web.json_response(data={'task_id': task_id})
 
     return wrapper
