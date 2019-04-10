@@ -19,7 +19,7 @@ def asyncable(func):
     @wraps(func)
     async def wrapper(obj, request, *args, **kw):
         task = func(obj, request, *args, **kw)
-        if request.query.get.get('async', 'false') != 'true':
+        if request.query.get('async', 'false') != 'true':
             return await task
         task_id = uuid.uuid4()
         ASYNC_TASKS[task_id] = asyncio.ensure_future(task)
