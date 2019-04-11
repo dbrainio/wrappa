@@ -1,6 +1,8 @@
+import asyncio
 import io
 import sys
 import traceback
+import uuid
 
 from aiohttp import web, MultipartWriter, ClientSession
 
@@ -15,6 +17,7 @@ class Predict:
         self._predictor = Predictor.create(kwargs['ds_model_config'])
         self._storage = kwargs.get('storage')
         self._is_inited = False
+        self._tasks = dict()
 
     async def _init(self):
         if not self._is_inited:
@@ -238,7 +241,7 @@ class Predict:
             await mpwriter.write(response)
         return response
 
-    async def post(self, request):
+    async def _post_begin(self, request):
         await self._init()
         # Check authorization
         authorized, token = self._check_auth(request)
@@ -261,15 +264,20 @@ class Predict:
         if data is None:
             return abort(403, message='Forbidden')
         if data == WrappaObject() or (
-            isinstance(data, list) and (not data or WrappaObject() in data)):
+                    isinstance(data, list) and (
+                            not data or WrappaObject() in data)):
             return abort(400, message='Invalid data')
         # Send data to request
         is_json = False
         if 'json' in self._server_info['specification']['output']:
             is_json = response_type == 'application/json'
 
-        res = await self._predictor.predict(data, is_json, request.path)
+        return data, is_json, response_type, token
 
+    async def _post_predict(self, data, is_json, path):
+        return await self._predictor.predict(data, is_json, path)
+
+    async def _post_end(self, request, res, response_type, token, data):
         exception = None
         if isinstance(res, tuple):
             exception, trace = res
@@ -297,3 +305,44 @@ class Predict:
         if response is None:
             return abort(400, message='Unable to prepare response')
         return response
+
+    async def post(self, request):
+        data, is_json, response_type, token = await self._post_begin(request)
+        is_async = request.query.get('async', 'false') == 'true'
+        task = self._post_predict(data, is_json, request.path)
+        if not is_async:
+            res = await task
+            return await self._post_end(
+                request, res, response_type, token, data)
+        task_id = str(uuid.uuid4())
+        self._tasks[task_id] = (
+            asyncio.ensure_future(task), response_type, token, data
+        )
+        return web.json_response(
+            data={'task_id': task_id})
+
+    async def result(self, request):
+        task_id = request.match_info['task_id']
+        if task_id not in self._tasks:
+            return web.json_response(data={
+                'success': False,
+                'error': 'not found',
+            }, status=404)
+        task, response_type, token, data = self._tasks[task_id]
+        if not task.done():
+            return web.json_response(data={
+                'success': False,
+                'error': 'not done',
+            }, status=200)
+        try:
+            res = await task
+            return await self._post_end(
+                request, res, response_type, token, data)
+        except Exception as e:
+            raise
+            return web.json_response(data={
+                'success': False,
+                'error': str(e),
+            }, status=500)
+        finally:
+            del self._tasks[task_id]

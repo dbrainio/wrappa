@@ -54,6 +54,7 @@ class App:
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])
+        app.add_routes([web.get('/result/{task_id}', predictor.result)])
 
         for path in kw.get('ds_model_config', {}).get('predict_aliases', []):
             app.add_routes([web.post(path, predictor.post)])
