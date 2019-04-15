@@ -27,12 +27,17 @@ class Predictor:
         # Init ds model
         self._ds_model = DSModel(**config['config'])
         self._requests_manager = RequestsManager()
+        self._batch_size = config.get('batch_size', 4)
 
     async def start_pooling(self):
         while True:
             try:
                 request = self._queue.get_nowait()
                 self._requests_manager[request[-2:]].append(request[:-2])
+                bs = self._batch_size
+                tasks = sum(len(v) for v in self._requests_manager.values())
+                if bs and tasks >= bs:
+                    raise asyncio.QueueEmpty()
             except asyncio.QueueEmpty:
                 await asyncio.sleep(0.05)
 

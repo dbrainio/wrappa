@@ -241,42 +241,6 @@ class Predict:
             await mpwriter.write(response)
         return response
 
-    async def _post_begin(self, request):
-        await self._init()
-        # Check authorization
-        authorized, token = self._check_auth(request)
-        if not authorized:
-            return abort(401, message='Unauthorized')
-
-        # Parse request
-        response_type = self._get_response_type(request)
-        if response_type is None:
-            return abort(400, message='Invalid Accept header value')
-        try:
-            data = await self._parse_request(request)
-        except Exception as e:
-            print(
-                'Failed to parse request with exception\n{exception}'.format(
-                    exception=traceback.format_exc()
-                ),
-                file=sys.stderr)
-            return abort(400, message='Unbale to parse request: ' + str(e))
-        if data is None:
-            return abort(403, message='Forbidden')
-        if data == WrappaObject() or (
-                    isinstance(data, list) and (
-                            not data or WrappaObject() in data)):
-            return abort(400, message='Invalid data')
-        # Send data to request
-        is_json = False
-        if 'json' in self._server_info['specification']['output']:
-            is_json = response_type == 'application/json'
-
-        return data, is_json, response_type, token
-
-    async def _post_predict(self, data, is_json, path):
-        return await self._predictor.predict(data, is_json, path)
-
     async def _post_end(self, request, res, response_type, token, data):
         exception = None
         if isinstance(res, tuple):
@@ -307,13 +271,44 @@ class Predict:
         return response
 
     async def post(self, request):
-        data, is_json, response_type, token = await self._post_begin(request)
+        await self._init()
+        # Check authorization
+        authorized, token = self._check_auth(request)
+        if not authorized:
+            return abort(401, message='Unauthorized')
+
+        # Parse request
+        response_type = self._get_response_type(request)
+        if response_type is None:
+            return abort(400, message='Invalid Accept header value')
+        try:
+            data = await self._parse_request(request)
+        except Exception as e:
+            print(
+                'Failed to parse request with exception\n{exception}'.format(
+                    exception=traceback.format_exc()
+                ),
+                file=sys.stderr)
+            return abort(400, message='Unbale to parse request: ' + str(e))
+        if data is None:
+            return abort(403, message='Forbidden')
+        if data == WrappaObject() or (
+                    isinstance(data, list) and (
+                            not data or WrappaObject() in data)):
+            return abort(400, message='Invalid data')
+        # Send data to request
+        is_json = False
+        if 'json' in self._server_info['specification']['output']:
+            is_json = response_type == 'application/json'
+
         is_async = request.query.get('async', 'false') == 'true'
-        task = self._post_predict(data, is_json, request.path)
+        task = self._predictor.predict(data, is_json, request.path)
+
         if not is_async:
             res = await task
             return await self._post_end(
                 request, res, response_type, token, data)
+
         task_id = str(uuid.uuid4())
         self._tasks[task_id] = (
             asyncio.ensure_future(task), response_type, token, data
