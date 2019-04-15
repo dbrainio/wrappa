@@ -43,20 +43,28 @@ class Predictor:
 
                 for key, data in self._requests_manager.items():
                     try:
-                        predicts = await self._predict([x[1] for x in data],
-                                                       key[1], key[0])
-                    except Exception as e:
-                        trace = traceback.format_exc()
-                        predicts = [(e, trace) for _ in data]
-                    self._requests_manager[key] = [
-                        (queue, predict)
-                        for predict, (queue, _) in
-                        zip(predicts, self._requests_manager[key])
-                        ]
+                        predicts = await self._predict(
+                            [x[1] for x in data],
+                            key[1],
+                            key[0]
+                        )
+                        for x, predict in zip(data, predicts):
+                            queue = x[0]
+                            queue.put_nowait(predict)
+                    except:
+                        for x in data:
+                            try:
+                                predict = await self._predict(
+                                    [x[1]],
+                                    key[1],
+                                    key[0]
+                                )
+                            except Exception as e:
+                                trace = traceback.format_exc()
+                                predict = e, trace
+                            queue = x[0]
+                            queue.put_nowait(predict)
 
-                for predicts in self._requests_manager.values():
-                    for queue, predict in predicts:
-                        queue.put_nowait(predict)
                 self._requests_manager.clear()
 
     async def _predict(self, data, is_json: bool, predict_name: str):
