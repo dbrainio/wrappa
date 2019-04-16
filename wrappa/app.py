@@ -1,5 +1,5 @@
 import json
-
+import motor
 import consul
 from aiohttp import web
 
@@ -15,6 +15,7 @@ class App:
             max_request_size=1024 ** 2 * 10,  # 10 Mb by default
             healthcheck_class=Healthcheck,
             predict_class=Predict,
+            db=None,
             **kw
     ):
         if kw.get('server_info') and kw['server_info'].get('passphrase'):
@@ -29,6 +30,9 @@ class App:
                         kw['storage']['files']['path'])
                 else:
                     raise ValueError('Set path of files storage')
+
+        if db:
+            self.db = motor.MotorClient(db)
 
         # Parse kwargs
         self._port = kw['port']
@@ -50,7 +54,7 @@ class App:
         # TODO: figure out what to do with timeout
 
         healthchecker = healthcheck_class()
-        predictor = predict_class(**kw)
+        predictor = predict_class(db=self.db, **kw)
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])

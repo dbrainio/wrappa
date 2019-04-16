@@ -1,3 +1,4 @@
+import datetime
 import asyncio
 import io
 import sys
@@ -12,7 +13,8 @@ from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 
 
 class Predict:
-    def __init__(self, **kwargs):
+    def __init__(self, db=None, **kwargs):
+        self._db = db
         self._server_info = kwargs['server_info']
         self._predictor = Predictor.create(kwargs['ds_model_config'])
         self._storage = kwargs.get('storage')
@@ -270,12 +272,26 @@ class Predict:
             return abort(400, message='Unable to prepare response')
         return response
 
+    async def _inc_usage(self, token, label):
+        if not self._db:
+            return
+        now = datetime.datetime.utcnow()
+        ymd = int(now.strftime('%Y%m%d'))
+        ym = int(now.strftime('%Y%m'))
+        daily = self._db.usage_stats.daily
+        monthly = self._db.usage_stats.monthly
+        inc = {'$inc': {label: 1}}
+        await daily.update({'token': token, 'date': ymd}, inc)
+        await monthly.update({'token': token, 'date': ym}, inc)
+
     async def post(self, request):
         await self._init()
         # Check authorization
         authorized, token = self._check_auth(request)
         if not authorized:
             return abort(401, message='Unauthorized')
+
+        await self._inc_usage(token, 'total')
 
         # Parse request
         response_type = self._get_response_type(request)
@@ -306,8 +322,10 @@ class Predict:
 
         if not is_async:
             res = await task
-            return await self._post_end(
+            result = await self._post_end(
                 request, res, response_type, token, data)
+            await self._inc_usage(token, 'success')
+            return result
 
         task_id = str(uuid.uuid4())
         self._tasks[task_id] = (
@@ -331,10 +349,11 @@ class Predict:
             }, status=200)
         try:
             res = await task
-            return await self._post_end(
+            result = await self._post_end(
                 request, res, response_type, token, data)
+            await self._inc_usage(token, 'success')
+            return result
         except Exception as e:
-            raise
             return web.json_response(data={
                 'success': False,
                 'error': str(e),
