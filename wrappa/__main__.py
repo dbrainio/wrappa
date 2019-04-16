@@ -13,6 +13,8 @@ def main():
                         help='True to run in debug mode (default: False)')
     parser.add_argument('--port', '-p', default=None,
                         help='Port of running server (default: None)')
+    parser.add_argument('--db',
+                        help='Database access details (only mongo for now)')
 
     args = parser.parse_args()
     config = read_config(args.config)
@@ -20,7 +22,10 @@ def main():
     if args.port is not None:
         config['port'] = args.port
 
-    app = App(debug=args.debug, disable_consul=args.disable_consul, **config)
+    app = App(
+        debug=args.debug, disable_consul=args.disable_consul, db=args.db,
+        **config
+    )
 
     app.start()
 
