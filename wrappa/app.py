@@ -33,7 +33,9 @@ class App:
                     raise ValueError('Set path of files storage')
 
         if db:
-            self.db = AsyncIOMotorClient(db)
+            self._db = AsyncIOMotorClient(db)
+        else:
+            self._db = None
 
         # Parse kwargs
         self._port = kw['port']
@@ -55,7 +57,7 @@ class App:
         # TODO: figure out what to do with timeout
 
         healthchecker = healthcheck_class()
-        predictor = predict_class(db=self.db, **kw)
+        predictor = predict_class(db=self._db, **kw)
 
         app.add_routes([web.get('/healthcheck', healthchecker.get)])
         app.add_routes([web.post('/predict', predictor.post)])
