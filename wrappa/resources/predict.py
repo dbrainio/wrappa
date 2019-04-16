@@ -281,8 +281,10 @@ class Predict:
         daily = self._db.usage_stats.daily
         monthly = self._db.usage_stats.monthly
         inc = {'$inc': {label: 1}}
-        await daily.update_one({'token': token, 'date': ymd}, inc)
-        await monthly.update_one({'token': token, 'date': ym}, inc)
+        await daily.update_one(
+            {'token': token, 'date': ymd}, inc, upsert=True)
+        await monthly.update_one(
+            {'token': token, 'date': ym}, inc, upsert=True)
 
     async def post(self, request):
         await self._init()
