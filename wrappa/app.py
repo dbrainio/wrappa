@@ -1,7 +1,8 @@
 import json
-import motor
+
 import consul
 from aiohttp import web
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from .resources import Healthcheck, Predict
 from .storage import FileStorage
@@ -32,7 +33,7 @@ class App:
                     raise ValueError('Set path of files storage')
 
         if db:
-            self.db = motor.MotorClient(db)
+            self.db = AsyncIOMotorClient(db)
 
         # Parse kwargs
         self._port = kw['port']
