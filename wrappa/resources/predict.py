@@ -1,3 +1,5 @@
+from PIL import Image
+from pdf2image import convert_from_bytes
 import datetime
 import asyncio
 import io
@@ -52,25 +54,43 @@ class Predict:
                 filename = ''.join(tmp)
             else:
                 filename = ''.join(tmp[:-1])
+        content_type = key.split('-')[0]
+        ext = filename.split('.')[-1]
         if filename is not None and buf is not None:
+            if content_type == 'image':
+                try:
+                    buf.seek(0)
+                    _ = Image.open(buf)
+                    return [WrappaImage(
+                        payload=buf.getvalue(), ext=ext, name=filename)]
+                except:
+                    imgs = convert_from_bytes(buf.getvalue())
+                    for i, img in enumerate(imgs):
+                        buf = io.BytesIO()
+                        img.save(buf, format='JPEG')
+                        buf.flush()
+                        imgs[i] = WrappaImage(
+                            payload=buf.getvalue(),
+                            ext='jpeg',
+                            name='{}-{}.jpeg'.format(
+                                filename.split('.')[0], str(i)
+                            )
+                        )
+                    return imgs
             data = {
                 'payload': buf.getvalue(),
-                'ext': filename.split('.')[-1],
+                'ext': ext,
                 'name': filename
             }
 
-        to_wrappa_type = {
-            'image': WrappaImage,
-            'file': WrappaFile
-        }
-        return to_wrappa_type[key.split('-')[0]](**data)
+        return [WrappaFile(**data)]
 
     @staticmethod
     def _parse_text(args, key):
         data = None
         if args.get(key) is not None:
             data = args[key]
-        return WrappaText(data)
+        return [WrappaText(data)]
 
     def _check_auth(self, request):
         if not self._server_info['passphrase']:
@@ -87,16 +107,31 @@ class Predict:
 
     async def _parse_one_request(self, data, key=None):
         input_spec = self._server_info['specification']['input']
-        resp = WrappaObject()
+        imgs, files, texts = [None], [None], [None]
         if 'image' in input_spec:
             k = 'image' if key is None else 'image-{}'.format(key)
-            resp.set_value(await self._parse_file_object(data, k))
+            imgs = await self._parse_file_object(data, k)
         if 'file' in input_spec:
             k = 'file' if key is None else 'file-{}'.format(key)
-            resp.set_value(await self._parse_file_object(data, k))
+            files = await self._parse_file_object(data, k)
         if 'text' in input_spec:
             k = 'text' if key is None else 'text-{}'.format(key)
-            resp.set_value(self._parse_text(data, k))
+            texts = self._parse_text(data, k)
+
+        resp = []
+        for i in imgs:
+            for f in files:
+                for t in texts:
+                    r = WrappaObject()
+                    if i:
+                        r.set_value(i)
+                    if f:
+                        r.set_value(f)
+                    if t:
+                        r.set_value(t)
+                    resp.append(r)
+        if 'list' not in input_spec and len(resp) == 1:
+            return resp[0]
         return resp
 
     async def _parse_request(self, request):
@@ -107,7 +142,7 @@ class Predict:
             resp = []
             max_ind = max(map(lambda x: int(x.split('-')[-1]), data.keys()))
             for i in range(max_ind + 1):
-                resp.append(await self._parse_one_request(data, i))
+                resp.extend(await self._parse_one_request(data, i))
         else:
             resp = await self._parse_one_request(data)
 
@@ -258,8 +293,10 @@ class Predict:
             self._storage.add(token, data, res)
 
         if exception is not None:
-            return abort(400,
-                         message='DS model failed to process data: ' + res)
+            return abort(
+                400,
+                message='DS model failed to process data: ' + res,
+            )
 
         # Prepare and send response
         response = None
