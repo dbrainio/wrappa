@@ -3,14 +3,13 @@ from pdf2image import convert_from_bytes
 import datetime
 import asyncio
 import io
-import sys
-import traceback
 import uuid
 
 from aiohttp import web, MultipartWriter, ClientSession
+from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
 from .predictor import Predictor
-from ..common import abort
+from ..common import *
 from ..models import WrappaFile, WrappaText, WrappaImage, WrappaObject
 
 
@@ -293,10 +292,10 @@ class Predict:
             self._storage.add(token, data, res)
 
         if exception is not None:
-            return abort(
-                400,
-                message='DS model failed to process data: ' + res,
-            )
+            try:
+                raise exception
+            except:
+                return DSModelError.json_response()
 
         # Prepare and send response
         response = None
@@ -306,7 +305,7 @@ class Predict:
             response = self._prepare_json_response(res)
 
         if response is None:
-            return abort(400, message='Unable to prepare response')
+            return UnableToPrepareResponseError.json_response()
         return response
 
     async def _inc_usage(self, token, label):
@@ -323,34 +322,37 @@ class Predict:
         await monthly.update_one(
             {'token': token, 'date': ym}, inc, upsert=True)
 
+    @UnknownError.if_failed
     async def post(self, request):
         await self._init()
         # Check authorization
         authorized, token = self._check_auth(request)
         if not authorized:
-            return abort(401, message='Unauthorized')
+            return UnauthorizedError.json_response()
 
         await self._inc_usage(token, 'total')
 
         # Parse request
         response_type = self._get_response_type(request)
         if response_type is None:
-            return abort(400, message='Invalid Accept header value')
+            return InvalidAcceptHeaderValueError.json_response()
         try:
             data = await self._parse_request(request)
+        except HTTPRequestEntityTooLarge:
+            return HTTPRequestEntityTooLargeError.json_response()
         except Exception as e:
             print(
                 'Failed to parse request with exception\n{exception}'.format(
                     exception=traceback.format_exc()
                 ),
                 file=sys.stderr)
-            return abort(400, message='Unbale to parse request: ' + str(e))
+            return UnbaleToParseRequestError.json_response()
         if data is None:
-            return abort(403, message='Forbidden')
+            return ForbiddenError.json_response()
         if data == WrappaObject() or (
                     isinstance(data, list) and (
                             not data or WrappaObject() in data)):
-            return abort(400, message='Invalid data')
+            return InvalidDataError.json_response()
         # Send data to request
         is_json = False
         if 'json' in self._server_info['specification']['output']:
@@ -373,19 +375,14 @@ class Predict:
         return web.json_response(
             data={'task_id': task_id})
 
+    @UnknownError.if_failed
     async def result(self, request):
         task_id = request.match_info['task_id']
         if task_id not in self._tasks:
-            return web.json_response(data={
-                'success': False,
-                'error': 'not found',
-            }, status=404)
+            return AsyncTaskNotFoundError.json_response()
         task, response_type, token, data = self._tasks[task_id]
         if not task.done():
-            return web.json_response(data={
-                'success': False,
-                'error': 'not done',
-            }, status=200)
+            return AsyncTaskNotDoneError.json_response()
         try:
             res = await task
             result = await self._post_end(
@@ -393,9 +390,6 @@ class Predict:
             await self._inc_usage(token, 'success')
             return result
         except Exception as e:
-            return web.json_response(data={
-                'success': False,
-                'error': str(e),
-            }, status=500)
+            return AsyncTaskFailedError.json_response()
         finally:
             del self._tasks[task_id]
