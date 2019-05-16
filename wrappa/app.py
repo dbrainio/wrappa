@@ -13,7 +13,7 @@ class App:
             self,
             debug=False,
             disable_consul=False,
-            max_request_size=1024 ** 2 * 10,  # 10 Mb by default
+            max_request_size=1024 ** 2 * 100,  # 100 Mb by default
             healthcheck_class=Healthcheck,
             predict_class=Predict,
             db=None,

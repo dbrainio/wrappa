@@ -51,7 +51,8 @@ install_requires = [
     'pyyaml>=3.13',
     'numpy>=1.14.0',
     'Pillow>=5.0.0',
-    'motor>=2.0.0'
+    'motor>=2.0.0',
+    'pdf2image>=1.5.4',
 ]
 
 CONFIG = {
