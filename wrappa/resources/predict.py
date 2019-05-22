@@ -138,6 +138,8 @@ class Predict:
 
         input_spec = self._server_info['specification']['input']
         if 'list' in input_spec:
+            if not data:
+                return []
             resp = []
             max_ind = max(map(lambda x: int(x.split('-')[-1]), data.keys()))
             for i in range(max_ind + 1):
