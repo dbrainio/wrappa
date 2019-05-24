@@ -9,13 +9,22 @@ MIN_CUSTOM_ERRNO = 1000
 
 
 class WrappaError(Exception):
-    def __init__(self, http_code, message, errno):
+    def __init__(self, http_code, message, errno, passthrough=True):
         self.http_code = http_code
         self.message = message
         self.errno = errno
         self.exc_info = sys.exc_info()
-        if self.exc_info[1] is None:
+
+        v = self.exc_info[1]
+        if v is None:
             self.tb = None
+        elif isinstance(v, WrappaError):
+            self.exc_info = v.exc_info
+            self.tb = v.tb
+            if passthrough:
+                self.http_code = v.http_code
+                self.message = v.message
+                self.errno = v.errno
         else:
             self.tb = traceback.format_exc()
 
