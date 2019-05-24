@@ -13,6 +13,11 @@ class WrappaError(Exception):
         self.http_code = http_code
         self.message = message
         self.errno = errno
+        self.exc_info = sys.exc_info()
+        if self.exc_info[1] is None:
+            self.tb = None
+        else:
+            self.tb = traceback.format_exc()
 
 
 class BaseHTTPError:
@@ -31,7 +36,7 @@ class BaseHTTPError:
             http_code = v.http_code
             message = v.message
             errno = v.errno
-            tb = None
+            tb = v.tb
             assert errno >= MIN_CUSTOM_ERRNO
         elif v is not None:
             tb = traceback.format_exc()
