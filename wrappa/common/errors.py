@@ -5,8 +5,6 @@ import traceback
 
 from .http_utils import abort
 
-MIN_CUSTOM_ERRNO = 1000
-
 
 class WrappaError(Exception):
     def __init__(self, http_code, message, errno, passthrough=True):
@@ -50,7 +48,6 @@ class BaseHTTPError:
             message = v.message
             errno = v.errno
             tb = v.tb
-            assert errno >= MIN_CUSTOM_ERRNO
         elif v is not None:
             tb = traceback.format_exc()
         return abort(http_code, message, errno, tb)
