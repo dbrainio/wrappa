@@ -1,12 +1,13 @@
-from PIL import Image
-from pdf2image import convert_from_bytes
-import datetime
 import asyncio
+import datetime
 import io
+import json
 import uuid
 
+from PIL import Image
 from aiohttp import web, MultipartWriter, ClientSession
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
+from pdf2image import convert_from_bytes
 
 from .predictor import Predictor
 from ..common import *
@@ -165,7 +166,11 @@ class Predict:
         if not isinstance(data, (dict, list,)) or 'json' not in output_spec:
             return None
 
-        return web.json_response(data=data, status=200)
+        return web.json_response(
+            data=data,
+            status=200,
+            dumps=functools.partial(json.dumps, indent=4)
+        )
 
     @staticmethod
     def _add_fields_file_object_value(fields, value, key, index=None):
@@ -375,7 +380,9 @@ class Predict:
             asyncio.ensure_future(task), response_type, token, data
         )
         return web.json_response(
-            data={'task_id': task_id})
+            data={'task_id': task_id},
+            dumps=functools.partial(json.dumps, indent=4),
+        )
 
     @UnknownError.if_failed
     async def result(self, request):

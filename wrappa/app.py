@@ -89,7 +89,7 @@ class App:
                                     interval='5s')
         )
 
-        _consul.kv.put(server_name, json.dumps(server_info))
+        _consul.kv.put(server_name, json.dumps(server_info, indent=4))
 
     @property
     def app(self):

@@ -66,7 +66,7 @@ def main():
     if 'json' in spec['output']:
         [res, *_] = model.predict([wo], json=True)
         # It will fail if not JSON serializable
-        json.dumps(res)
+        json.dumps(res, indent=4)
 
     f_kwargs = {}
     if 'json' in model.predict.__code__.co_varnames:
