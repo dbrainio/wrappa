@@ -28,6 +28,10 @@ class WrappaError(Exception):
         else:
             self.tb = traceback.format_exc()
 
+    def set_traceback(self, tb):
+        self.tb = tb
+        return self
+
 
 class BaseHTTPError:
     http_code = 400

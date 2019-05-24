@@ -29,16 +29,21 @@ class Predictor:
         self._requests_manager = RequestsManager()
         self._batch_size = config.get('batch_size', 4)
 
+    def _need_to_process_batch(self) -> bool:
+        if self._queue.empty():
+            return True
+        request = self._queue.get_nowait()
+        self._requests_manager[request[-2:]].append(request[:-2])
+        bs = self._batch_size
+        tasks = sum(len(v) for v in self._requests_manager.values())
+        if bs and tasks >= bs:
+            return True
+        return False
+
     async def start_pooling(self):
         while True:
-            try:
-                request = self._queue.get_nowait()
-                self._requests_manager[request[-2:]].append(request[:-2])
-                bs = self._batch_size
-                tasks = sum(len(v) for v in self._requests_manager.values())
-                if bs and tasks >= bs:
-                    raise asyncio.QueueEmpty()
-            except asyncio.QueueEmpty:
+            need_to_process_batch = self._need_to_process_batch()
+            if need_to_process_batch:
                 await asyncio.sleep(0.05)
 
                 for key, data in self._requests_manager.items():
