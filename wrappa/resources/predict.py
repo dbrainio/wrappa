@@ -93,7 +93,7 @@ class Predict:
         return [WrappaText(data)]
 
     def _check_auth(self, request):
-        if not self._server_info['passphrase']:
+        if not self._server_info.get('passphrase'):
             return True, None
 
         token = request.headers.get('Authorization')
