@@ -162,10 +162,6 @@ class Predict:
         return None
 
     def _prepare_json_response(self, data):
-        output_spec = self._server_info['specification']['output']
-        if not isinstance(data, (dict, list,)) or 'json' not in output_spec:
-            return None
-
         return web.json_response(
             data=data,
             status=200,
