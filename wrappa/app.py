@@ -1,5 +1,7 @@
-import json
 import argparse
+import json
+import os
+
 import consul
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -131,6 +133,8 @@ def run(ds_model=None, **kw):
         config['ds_model_config']['model_class'] = ds_model
 
     for passphrases_file in args.passphrases:
+        if not os.path.exists(passphrases_file):
+            continue
         with open(passphrases_file) as fd:
             for line in fd:
                 passphrase = line.strip().split()[0]
