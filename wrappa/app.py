@@ -1,9 +1,10 @@
 import json
-
+import argparse
 import consul
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from .common import read_config
 from .resources import Healthcheck, Predict
 from .storage import FileStorage
 
@@ -97,3 +98,54 @@ class App:
 
     def start(self):
         web.run_app(self.app, host='0.0.0.0', port=self._port)
+
+
+def run(ds_model=None, **kw):
+    parser = argparse.ArgumentParser(description='Process config.yml file')
+    parser.add_argument('--config', '-c', default='./config.yml',
+                        help='path to config.yml (default: ./config.yml)')
+    parser.add_argument('--passphrases', action='append', default=[],
+                        help='path to file with passphrases (can be used multiple times)')
+    parser.add_argument('--disable-consul', '-dc', action='store_true',
+                        help='True to not to sync with consul (default: False)')
+    parser.add_argument('--debug', '-d', action='store_true',
+                        help='True to run in debug mode (default: False)')
+    parser.add_argument('--port', '-p', default=None,
+                        help='Port of running server (default: None)')
+    parser.add_argument('--db',
+                        help='Database access details (only mongo for now)')
+
+    args = parser.parse_args()
+    config = read_config(args.config)
+
+    if args.port is not None:
+        config['port'] = args.port
+
+    config.update(kw)
+
+    for opt in ['debug', 'disable_consul', 'db']:
+        if opt not in kw and hasattr(args, opt):
+            config[opt] = getattr(args, opt)
+
+    if ds_model is not None:
+        config['ds_model_config']['model_class'] = ds_model
+
+    for passphrases_file in args.passphrases:
+        with open(passphrases_file) as fd:
+            for line in fd:
+                passphrase = line.strip().split()[0]
+                if passphrase:
+                    if 'server_info' not in config:
+                        config['server_info'] = {}
+                    if not config['server_info'].get('passphrase'):
+                        config['server_info']['passphrase'] = []
+                    if isinstance(
+                            config['server_info'].get('passphrase'),
+                            str
+                    ):
+                        config['server_info']['passphrase'] = [
+                            config['server_info']['passphrase']
+                        ]
+                    config['server_info']['passphrase'].append(passphrase)
+
+    App(**config).start()
