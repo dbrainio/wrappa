@@ -28,6 +28,7 @@ class Predictor:
         self._ds_model = DSModel(**config['config'])
         self._requests_manager = RequestsManager()
         self._batch_size = config.get('batch_size', 4)
+        self._async = config.get('async', False)
 
     def _need_to_process_batch(self) -> bool:
         if self._queue.empty():
@@ -91,6 +92,8 @@ class Predictor:
 
     async def predict(self, data, is_json: bool, path: str):
         predict_name = path2def_name(path)
+        if self._async:
+            return (await self._predict([data], is_json, predict_name))[0]
         queue = asyncio.Queue(maxsize=1)
         # print('Putting in queue')
         self._queue.put_nowait((queue, data, predict_name, is_json))
